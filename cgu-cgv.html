@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VibeCheck — CGU & CGV</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg: #0B0B10;
+    --bg-soft: #131319;
+    --card: #17171F;
+    --border: rgba(255,255,255,0.08);
+    --text: #F5F5F7;
+    --text-dim: #9A9AA5;
+    --coral: #FF4D6D;
+    --coral-dim: rgba(255,77,109,0.12);
+    --yellow: #FFD84D;
+    --mint: #5EEAD4;
+  }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background: linear-gradient(135deg, #0B0B10 0%, #0F0F18 50%, #0A0A12 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  .display{ font-family:'Archivo Black', Impact, "Arial Black", sans-serif; text-transform:uppercase; letter-spacing:-0.02em; }
+  a{ color:inherit; text-decoration:none; }
+
+  .wrap{ max-width:780px; margin:0 auto; padding:0 24px; }
+
+  nav{
+    position:sticky; top:0; z-index:50;
+    -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+    background: rgba(11,11,16,0.92);
+    border-bottom:1px solid var(--border);
+  }
+  .nav-inner{
+    max-width:1120px; margin:0 auto; padding:16px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo{ display:flex; align-items:center; gap:8px; font-size:15px; font-weight:800; }
+  .logo-mark{ width:30px; height:30px; display:flex; align-items:center; justify-content:center; filter: drop-shadow(0 0 7px rgba(255,77,109,0.55)); }
+  .logo-mark svg{ width:23px; height:23px; display:block; }
+  .btn-back{ font-size:13px; font-weight:700; color:var(--text-dim); }
+  .btn-back:hover{ color:var(--text); }
+
+  .page-header{ padding:64px 0 40px; }
+  .page-title{ font-size:clamp(30px, 5vw, 48px); line-height:1; margin-bottom:16px; }
+  .page-sub{ font-size:15px; color:var(--text-dim); }
+
+  .legal-content{ padding-bottom:100px; color:#D5D5DB; font-size:15px; }
+  .legal-section{ margin-bottom:40px; }
+  .legal-section h2{
+    font-family:'Archivo Black', Impact, sans-serif; text-transform:uppercase;
+    font-size:19px; color:var(--text); margin-bottom:16px; letter-spacing:-0.01em;
+  }
+  .legal-section h3{ font-size:14.5px; font-weight:800; color:var(--coral); margin:20px 0 8px; }
+  .legal-section p{ margin-bottom:12px; line-height:1.65; }
+  .legal-section ul{ padding-left:20px; margin-bottom:12px; }
+  .legal-section li{ margin-bottom:8px; line-height:1.6; }
+  .legal-info-grid{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:8px 24px; margin-bottom:8px;
+  }
+  .legal-info-row{ display:flex; gap:16px; padding:14px 0; border-bottom:1px solid var(--border); flex-wrap:wrap; }
+  .legal-info-row:last-child{ border-bottom:none; }
+  .legal-info-label{ width:180px; flex-shrink:0; color:var(--text-dim); font-size:13px; font-weight:700; }
+  .legal-info-value{ font-size:14px; }
+  .legal-todo{ color:var(--yellow); font-weight:700; }
+  .legal-updated{ color:var(--text-dim); font-size:13px; margin-top:40px; }
+
+  .legal-placeholder{
+    background:var(--card); border:1px solid var(--border); border-radius:16px;
+    padding:32px; color:var(--text-dim); font-size:14.5px;
+  }
+
+  footer{ border-top:1px solid var(--border); padding:32px 24px; text-align:center; color:var(--text-dim); font-size:12.5px; }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="url(#g1)" xmlns="http://www.w3.org/2000/svg">
+          <defs><linearGradient id="g1" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#FF4D6D"/><stop offset="100%" stop-color="#FFD84D"/></linearGradient></defs>
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+      VibeCheck
+    </a>
+    <a class="btn-back" href="index.html">← Retour au site</a>
+  </div>
+</nav>
+
+<div class="wrap">
+  <div class="page-header">
+    <h1 class="display page-title">CGU & CGV</h1>
+    <p class="page-sub">Conditions générales d'utilisation et de vente de VibeCheck.</p>
+  </div>
+
+  <div class="legal-content">
+    <div class="legal-section">
+      <h2>1. Objet du service</h2>
+      <p>VibeCheck est une plateforme SaaS utilisant l'intelligence artificielle pour analyser des captures d'écran de profils (réseaux sociaux, applications de rencontre) et générer un rapport personnalisé ("Roast" et "Toast") avec un score, une punchline et des recommandations. L'accès au service est conditionné par l'acceptation pleine et entière des présentes conditions.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>2. Système de crédits</h2>
+      <p>Chaque analyse consomme des crédits. Une première analyse est offerte gratuitement, sans carte bancaire requise. Au-delà, l'utilisateur peut acheter des packs de crédits à la demande.</p>
+      <ul>
+        <li>Les crédits achetés n'expirent jamais.</li>
+        <li>VibeCheck ne fonctionne pas par abonnement : chaque pack est un achat unique, sans renouvellement automatique.</li>
+        <li>Tout abus ou tentative de fraude entraînera la suspension immédiate du compte, sans remboursement.</li>
+      </ul>
+    </div>
+
+    <div class="legal-section">
+      <h2>3. Contenu déposé par l'utilisateur</h2>
+      <p>L'utilisateur est seul responsable des captures d'écran qu'il upload sur la plateforme. En utilisant VibeCheck, l'utilisateur garantit disposer du droit d'utiliser et de partager le contenu déposé, et s'engage à ne pas uploader de contenu appartenant à un tiers sans son consentement, ni de contenu illégal, diffamatoire ou portant atteinte aux droits d'autrui.</p>
+      <p>VibeCheck décline toute responsabilité en cas d'utilisation du service en violation de ces principes, et se réserve le droit de suspendre tout compte concerné.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>4. Responsabilité</h2>
+      <p>Les rapports générés par VibeCheck (roast, toast, score, punchline) sont produits par une intelligence artificielle à des fins de divertissement. Ils ne constituent ni un jugement objectif, ni un avis professionnel. VibeCheck ne saurait être tenu responsable de l'usage fait de ces résultats par l'utilisateur.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>5. Politique de remboursement</h2>
+      <p>Une politique de remboursement encadrée s'applique aux packs de crédits achetés. Le détail des conditions est disponible sur la page <a href="mentions-legales.html" style="color:var(--mint);">Mentions légales</a>.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>6. Comportement et respect</h2>
+      <p>Tout utilisateur de VibeCheck s'engage à adopter un comportement respectueux envers l'équipe, le support et les autres utilisateurs.</p>
+      <ul>
+        <li>Tout manque de respect, insulte, menace ou comportement abusif envers l'équipe VibeCheck entraînera le bannissement définitif et immédiat du compte.</li>
+        <li>En cas de bannissement pour ce motif, l'utilisateur ne sera éligible à aucun remboursement ni compensation, quel que soit le solde de crédits restant.</li>
+      </ul>
+      <p>VibeCheck se réserve le droit de juger de la gravité du comportement et d'appliquer cette sanction sans préavis.</p>
+    </div>
+
+    <div class="legal-section">
+      <h2>7. Suppression de compte</h2>
+      <p>L'utilisateur peut supprimer son compte à tout moment depuis son espace profil. La suppression entraîne l'effacement définitif de ses données et de son historique d'analyses, sous 30 jours.</p>
+    </div>
+
+    <div class="legal-updated">Dernière mise à jour : août 2026</div>
+  </div>
+</div>
+
+<footer>© 2026 VibeCheck. Tous droits réservés.</footer>
+
+</body>
+</html>
