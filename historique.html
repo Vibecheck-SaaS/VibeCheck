@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VibeCheck — Historique</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap');
+
+  :root{
+    --bg: #0B0B10;
+    --bg-soft: #131319;
+    --card: #17171F;
+    --border: rgba(255,255,255,0.08);
+    --text: #F5F5F7;
+    --text-dim: #9A9AA5;
+    --coral: #FF4D6D;
+    --coral-dim: rgba(255,77,109,0.12);
+    --yellow: #FFD84D;
+    --mint: #5EEAD4;
+    --mint-dim: rgba(94,234,212,0.12);
+
+    --dur-instant: 100ms;
+    --dur-fast: 180ms;
+    --dur-base: 280ms;
+    --dur-slow: 380ms;
+    --dur-slower: 650ms;
+    --ease-out-snap: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  /* ---------- Utilitaires d'entrée échelonnée + skeleton loading (même
+     système que sur index.html, pour garder une cohérence totale) ---------- */
+  .stagger-item{
+    opacity:0; transform:translateY(14px);
+    animation: staggerIn var(--dur-slow) var(--ease-out-snap) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  @keyframes staggerIn{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+  .skeleton{
+    position:relative; overflow:hidden;
+    background:var(--bg-soft); border-radius:12px;
+  }
+  .skeleton::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.07) 50%, transparent 65%);
+    transform:translateX(-120%);
+    animation: skeletonSweep 1.6s var(--ease-in-out-soft) infinite;
+  }
+  @keyframes skeletonSweep{ to{ transform:translateX(120%); } }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background: linear-gradient(135deg, #0B0B10 0%, #0F0F18 50%, #0A0A12 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    overflow-x: hidden;
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+    position: relative;
+  }
+  body::before{
+    content:'';
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:
+      radial-gradient(ellipse 800px 500px at 15% -5%, rgba(255,77,109,0.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 85% 10%, rgba(94,234,212,0.06), transparent 60%);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .display{ font-family:'Archivo Black', Impact, "Arial Black", sans-serif; text-transform:uppercase; letter-spacing:-0.02em; }
+
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:inherit; cursor:pointer; border:none; }
+
+  .wrap{ max-width:1120px; margin:0 auto; padding:0 24px; position:relative; z-index:1; }
+
+  nav{
+    position:sticky; top:0; z-index:50;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    background: rgba(11,11,16,0.92);
+    border-bottom:1px solid var(--border);
+  }
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))){
+    nav{ background: rgba(11,11,16,0.7); }
+  }
+  .nav-inner{
+    max-width:1120px; margin:0 auto; padding:16px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo{ display:flex; align-items:center; gap:8px; font-size:15px; font-weight:800; }
+  .logo-mark{
+    width:30px; height:30px;
+    display:flex; align-items:center; justify-content:center;
+    filter: drop-shadow(0 0 7px rgba(255,77,109,0.55));
+  }
+  .logo-mark svg{ width:23px; height:23px; display:block; }
+
+  .btn-connexion{
+    padding:8px 10px; background:none; border:none; color:var(--text-dim);
+    font-size:13px; font-weight:700; white-space:nowrap;
+  }
+  .btn-connexion:hover{ color:var(--text); }
+
+  .btn-commencer{
+    font-family:'Archivo Black', Impact, sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.01em;
+    padding:11px 20px;
+    border-radius:100px;
+    background: linear-gradient(135deg, var(--coral), var(--yellow));
+    color:#0B0B10;
+    font-size:13px;
+    white-space:nowrap;
+    box-shadow: 0 6px 18px rgba(255,77,109,0.4);
+  }
+  .nav-user-greeting{ font-size:13px; font-weight:700; color:var(--text-dim); white-space:nowrap; }
+  .nav-actions{ display:flex; align-items:center; gap:10px; }
+
+  @media (max-width:420px){
+    .btn-commencer{ padding:9px 14px; font-size:11.5px; }
+    .btn-connexion{ padding:6px 6px; font-size:11.5px; }
+    .nav-user-greeting{ font-size:11.5px; }
+    .nav-inner{ padding:14px 16px; }
+    .nav-actions{ gap:6px; }
+    .logo{ font-size:13px; }
+  }
+
+  .page-header{ padding:64px 0 40px; }
+  .page-eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 14px; border-radius:100px;
+    background:var(--coral-dim); border:1px solid rgba(255,77,109,0.3);
+    font-size:12.5px; font-weight:700; color:var(--coral);
+    margin-bottom:24px;
+  }
+  .page-eyebrow-dot{ width:6px; height:6px; border-radius:50%; background:var(--coral); animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  .page-title{
+    font-size:clamp(32px, 5vw, 56px);
+    line-height:1;
+    margin-bottom:16px;
+    text-shadow: 0 4px 32px rgba(0,0,0,0.6);
+  }
+  .page-title .accent{ color:var(--coral); }
+
+  .page-sub{
+    font-size:16px; color:#D5D5DB; max-width:560px; font-weight:500;
+  }
+
+  .history-section{ padding:0 0 100px; }
+
+  .history-list{
+    display:flex; flex-direction:column; gap:16px;
+  }
+
+  .history-card{
+    background:var(--card); border:1px solid var(--border); border-radius:20px;
+    padding:20px 24px;
+    display:flex; align-items:center; gap:20px;
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+  }
+  .history-card:hover{ transform: translateY(-3px); border-color: rgba(255,255,255,0.18); box-shadow:0 14px 32px rgba(0,0,0,0.25); }
+
+  .history-skel-card{
+    background:var(--card); border:1px solid var(--border); border-radius:20px;
+    padding:20px 24px; display:flex; align-items:center; gap:20px;
+  }
+  .history-skel-badge{ flex-shrink:0; width:64px; height:64px; border-radius:16px; }
+  .history-skel-lines{ flex:1; }
+  .history-skel-row{ height:14px; border-radius:7px; margin-bottom:10px; }
+  .history-skel-lines .history-skel-row:nth-child(1){ width:45%; height:15px; }
+  .history-skel-lines .history-skel-row:nth-child(2){ width:75%; height:11px; margin-bottom:0; }
+
+  .history-score-badge{
+    flex-shrink:0;
+    width:64px; height:64px; border-radius:16px;
+    background: linear-gradient(160deg, #1A1A24 0%, #0F0F16 100%);
+    border:1px solid rgba(255,255,255,0.1);
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+  }
+  .history-score-num{ font-family:'Archivo Black'; font-size:20px; color:var(--yellow); line-height:1; }
+  .history-score-sub{ font-size:9px; color:var(--text-dim); font-weight:700; text-transform:uppercase; letter-spacing:0.03em; margin-top:2px; }
+
+  .history-info{ flex:1; min-width:0; }
+  .history-verdict{ font-family:'Archivo Black'; font-size:15px; margin-bottom:4px; }
+  .history-punch{ font-size:13.5px; color:var(--text-dim); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .history-meta{ display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+  .history-platform-chip{
+    font-size:11px; font-weight:600; padding:4px 10px; border-radius:100px;
+    background:var(--bg-soft); border:1px solid var(--border); color:var(--text-dim);
+  }
+  .history-date{ font-size:12px; color:var(--text-dim); flex-shrink:0; white-space:nowrap; }
+
+  .history-actions{ display:flex; gap:8px; flex-shrink:0; }
+  .history-view-btn{
+    padding:9px 16px; border-radius:100px; font-size:12.5px; font-weight:700;
+    background:var(--bg-soft); border:1px solid var(--border); color:var(--text);
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+  }
+  .history-view-btn:hover{ border-color: var(--coral); color: var(--coral); transform:translateY(-1px); }
+  .history-view-btn:active{ transform:translateY(0) scale(0.96); transition-duration:var(--dur-instant); }
+
+  .empty-state{
+    text-align:center; padding:80px 24px;
+    background:var(--card); border:1px solid var(--border); border-radius:24px;
+    animation: staggerIn var(--dur-slow) var(--ease-out-snap) both;
+  }
+  .empty-icon{ font-size:48px; margin-bottom:20px; animation: emptyIconFloat 3.5s ease-in-out infinite; }
+  @keyframes emptyIconFloat{ 0%,100%{ transform:translateY(0) rotate(0deg); } 50%{ transform:translateY(-8px) rotate(-3deg); } }
+  .empty-title{ font-family:'Archivo Black'; font-size:22px; margin-bottom:10px; }
+  .empty-sub{ font-size:14.5px; color:var(--text-dim); max-width:400px; margin:0 auto 28px; }
+  .empty-cta{
+    display:inline-flex; align-items:center; gap:10px;
+    padding:14px 28px; border-radius:100px;
+    background: linear-gradient(135deg, var(--coral), var(--yellow));
+    color:#0B0B10; font-weight:800; font-size:14.5px;
+    font-family:'Archivo Black', Impact, sans-serif; text-transform:uppercase; letter-spacing:0.01em;
+    box-shadow: 0 8px 24px rgba(255,77,109,0.35);
+    transition: transform var(--dur-fast) var(--ease-out-snap), box-shadow var(--dur-fast) var(--ease-out-snap);
+  }
+  .empty-cta:hover{ transform:translateY(-2px); box-shadow:0 12px 30px rgba(255,77,109,0.48); }
+  .empty-cta:active{ transform:translateY(0) scale(0.98); transition-duration:var(--dur-instant); }
+
+  .logged-out-state{
+    text-align:center; padding:80px 24px;
+    background:var(--card); border:1px solid var(--border); border-radius:24px;
+    animation: staggerIn var(--dur-slow) var(--ease-out-snap) both;
+  }
+
+  footer{ border-top:1px solid var(--border); padding:32px 0; text-align:center; color:var(--text-dim); font-size:13px; }
+
+  ::selection{ background:var(--coral); color:#fff; }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="url(#logoFlameGradient)" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logoFlameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FF4D6D"/>
+              <stop offset="55%" stop-color="#FF7A5C"/>
+              <stop offset="100%" stop-color="#FFD84D"/>
+            </linearGradient>
+          </defs>
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+      VibeCheck
+    </a>
+    <div class="nav-actions" id="navActionsLoggedOut">
+      <a class="btn-connexion" href="index.html">Historique</a>
+      <a class="btn-connexion" href="index.html#login">Connexion</a>
+      <a class="btn-commencer" href="index.html#signup">Commencer</a>
+    </div>
+    <div class="nav-actions" id="navActionsLoggedIn" style="display:none;">
+      <span class="nav-user-greeting" id="navUserGreeting">👋</span>
+      <a class="btn-connexion" href="index.html">Historique</a>
+      <button class="btn-connexion" id="navLogoutBtn" type="button">Déconnexion</button>
+    </div>
+  </div>
+</nav>
+
+<header class="page-header">
+  <div class="wrap">
+    <div class="page-eyebrow"><span class="page-eyebrow-dot"></span> Tes analyses passées</div>
+    <h1 class="display page-title">Ton <span class="accent">historique</span></h1>
+    <p class="page-sub">Retrouve toutes tes analyses précédentes, leurs scores et leurs punchlines.</p>
+  </div>
+</header>
+
+<section class="history-section">
+  <div class="wrap">
+    <div id="historyLoading" class="history-list">
+      <div class="history-skel-card"><div class="history-skel-badge skeleton"></div><div class="history-skel-lines"><div class="history-skel-row skeleton"></div><div class="history-skel-row skeleton"></div></div></div>
+      <div class="history-skel-card"><div class="history-skel-badge skeleton"></div><div class="history-skel-lines"><div class="history-skel-row skeleton"></div><div class="history-skel-row skeleton"></div></div></div>
+      <div class="history-skel-card"><div class="history-skel-badge skeleton"></div><div class="history-skel-lines"><div class="history-skel-row skeleton"></div><div class="history-skel-row skeleton"></div></div></div>
+    </div>
+
+    <div id="historyLoggedOut" class="logged-out-state" style="display:none;">
+      <div class="empty-icon">🔒</div>
+      <div class="empty-title">Connecte-toi pour voir ton historique</div>
+      <p class="empty-sub">Ton historique d'analyses est privé et lié à ton compte.</p>
+      <a href="index.html#login" class="empty-cta">Se connecter</a>
+    </div>
+
+    <div id="historyEmpty" class="empty-state" style="display:none;">
+      <div class="empty-icon">📭</div>
+      <div class="empty-title">Aucune analyse pour le moment</div>
+      <p class="empty-sub">Fais ta première analyse et retrouve-la ici, avec son score, son verdict et sa punchline.</p>
+      <a href="index.html#app" class="empty-cta">Checker ma vibe 🔥</a>
+    </div>
+
+    <div id="historyList" class="history-list"></div>
+  </div>
+</section>
+
+<footer>
+  VibeCheck — Les analyses sont générées à des fins de divertissement.
+</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  const SESSION_KEY = 'vibecheck_session';
+  const SUPABASE_URL = 'https://teqcsguiphdptdgtpdvi.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_iCB1zifgp9hOPky-UD3-sQ_6VuWJdTK';
+  const supabaseClient = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  function getLocalSession(){
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e){ return null; }
+  }
+  function clearLocalSession(){
+    try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+  }
+
+  const navActionsLoggedOut = document.getElementById('navActionsLoggedOut');
+  const navActionsLoggedIn = document.getElementById('navActionsLoggedIn');
+  const navUserGreeting = document.getElementById('navUserGreeting');
+  const navLogoutBtn = document.getElementById('navLogoutBtn');
+  const historyLoggedOut = document.getElementById('historyLoggedOut');
+  const historyEmpty = document.getElementById('historyEmpty');
+  const historyList = document.getElementById('historyList');
+  const historyLoading = document.getElementById('historyLoading');
+
+  navLogoutBtn.addEventListener('click', async () => {
+    if (supabaseClient) {
+      try { await supabaseClient.auth.signOut(); } catch(e) {}
+    }
+    clearLocalSession();
+    window.location.href = 'index.html';
+  });
+
+  function formatDate(iso){
+    try {
+      const d = new Date(iso);
+      return d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
+    } catch(e) { return ''; }
+  }
+
+  function renderHistoryCard(entry, index){
+    const card = document.createElement('div');
+    card.className = 'history-card stagger-item';
+    card.style.setProperty('--i', index);
+    card.innerHTML = `
+      <div class="history-score-badge">
+        <div class="history-score-num">${entry.vibe_score}</div>
+        <div class="history-score-sub">/ 10</div>
+      </div>
+      <div class="history-info">
+        <div class="history-verdict">${entry.verdict || ''}</div>
+        <div class="history-punch">${entry.punchline || ''}</div>
+        <div class="history-meta">
+          <span class="history-date">${formatDate(entry.created_at)}</span>
+        </div>
+      </div>
+    `;
+    return card;
+  }
+
+  function showNavAsLoggedIn(displayName){
+    navActionsLoggedOut.style.display = 'none';
+    navActionsLoggedIn.style.display = 'flex';
+    navUserGreeting.textContent = '👋 ' + displayName;
+  }
+  function showNavAsLoggedOut(){
+    navActionsLoggedOut.style.display = 'flex';
+    navActionsLoggedIn.style.display = 'none';
+  }
+
+  async function loadHistoryFromSupabase(userId){
+    const { data, error } = await supabaseClient
+      .from('analyses')
+      .select('vibe_score, verdict, punchline, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (historyLoading) historyLoading.style.display = 'none';
+
+    if (error) {
+      console.error('Erreur chargement historique Supabase :', error);
+      historyEmpty.style.display = 'block';
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      historyEmpty.style.display = 'block';
+      return;
+    }
+
+    data.forEach((entry, index) => {
+      historyList.appendChild(renderHistoryCard(entry, index));
+    });
+  }
+
+  async function init(){
+    if (!supabaseClient) {
+      showNavAsLoggedOut();
+      if (historyLoading) historyLoading.style.display = 'none';
+      historyLoggedOut.style.display = 'block';
+      return;
+    }
+
+    const { data, error } = await supabaseClient.auth.getSession();
+    const supaSession = !error && data ? data.session : null;
+
+    if (supaSession && supaSession.user) {
+      const user = supaSession.user;
+      const displayName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name))
+        || (user.email ? user.email.split('@')[0] : 'toi');
+      showNavAsLoggedIn(displayName);
+      await loadHistoryFromSupabase(user.id);
+    } else {
+      // Pas de session Supabase active : même si un compte email/mot de passe simulé
+      // existe localement, l'historique réel n'est disponible que pour les comptes
+      // connectés via Supabase (ex: Google).
+      if (historyLoading) historyLoading.style.display = 'none';
+      showNavAsLoggedOut();
+      historyLoggedOut.style.display = 'block';
+    }
+  }
+
+  init();
+})();
+</script>
+
+</body>
+</html>

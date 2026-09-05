@@ -1,0 +1,3249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" type="image/png" href="favicon.png">
+<title>VibeCheck - Ta vibe, sans filtre</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Inter:wght@400;500;600;700;800&display=swap');
+  /* display=swap ci-dessus garantit un fallback visible immédiat pendant le chargement des polices */
+
+  :root{
+    --bg: #0B0B10;
+    --bg-soft: #131319;
+    --card: #17171F;
+    --border: rgba(255,255,255,0.08);
+    --text: #F5F5F7;
+    --text-dim: #9A9AA5;
+    --coral: #FF4D6D;
+    --coral-dim: rgba(255,77,109,0.12);
+    --yellow: #FFD84D;
+    --mint: #5EEAD4;
+    --mint-dim: rgba(94,234,212,0.12);
+
+    /* ---------- MOTION SYSTEM ----------
+       Durées : instant = feedback tactile, fast = hover, base = transitions
+       standard, slow = ouvertures modales, slower = séquences d'entrée hero.
+       Easings : snap = décélération confiante (entrées/reveals), soft =
+       symétrique (modales/toggles), spring = léger rebond (CTA/badges — réservé
+       aux moments "signature", pas utilisé partout pour garder de la retenue). */
+    --dur-instant: 100ms;
+    --dur-fast: 180ms;
+    --dur-base: 280ms;
+    --dur-slow: 380ms;
+    --dur-slower: 650ms;
+    --ease-out-snap: cubic-bezier(0.16, 1, 0.3, 1);
+    --ease-in-out-soft: cubic-bezier(0.65, 0, 0.35, 1);
+    --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *, *::before, *::after{
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+
+  /* ---------- Utilitaires d'entrée échelonnée + skeleton loading (réutilisés
+     sur rapport, premium, historique) ---------- */
+  .stagger-item{
+    opacity:0; transform:translateY(14px);
+    animation: staggerIn var(--dur-slow) var(--ease-out-snap) both;
+    animation-delay: calc(var(--i, 0) * 70ms);
+  }
+  @keyframes staggerIn{
+    from{ opacity:0; transform:translateY(14px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  .skeleton{
+    position:relative; overflow:hidden;
+    background:var(--bg-soft); border-radius:12px;
+  }
+  .skeleton::after{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.07) 50%, transparent 65%);
+    transform:translateX(-120%);
+    animation: skeletonSweep 1.6s var(--ease-in-out-soft) infinite;
+  }
+  @keyframes skeletonSweep{ to{ transform:translateX(120%); } }
+
+  /* ---------- Scroll-reveal : fade + léger rise, activé via IntersectionObserver ---------- */
+  .reveal-on-scroll{
+    opacity:0; transform:translateY(18px);
+    transition: opacity var(--dur-slower) var(--ease-out-snap), transform var(--dur-slower) var(--ease-out-snap);
+  }
+  .reveal-on-scroll.revealed{ opacity:1; transform:translateY(0); }
+
+  *{ margin:0; padding:0; box-sizing:border-box; }
+
+  html{ scroll-behavior:smooth; }
+
+  body{
+    background: linear-gradient(135deg, #0B0B10 0%, #0F0F18 50%, #0A0A12 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    overflow-x: hidden;
+    min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+    position: relative;
+  }
+  body::before{
+    content:'';
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:
+      radial-gradient(ellipse 800px 500px at 15% -5%, rgba(255,77,109,0.08), transparent 60%),
+      radial-gradient(ellipse 700px 500px at 85% 10%, rgba(94,234,212,0.06), transparent 60%);
+    pointer-events:none;
+    z-index:0;
+  }
+
+  .display{ font-family:'Archivo Black', Impact, "Arial Black", sans-serif; text-transform:uppercase; letter-spacing:-0.02em; }
+
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:inherit; cursor:pointer; border:none; }
+
+  .wrap{ max-width:1120px; margin:0 auto; padding:0 24px; position:relative; z-index:1; }
+
+  nav{
+    position:sticky; top:0; z-index:50;
+    -webkit-backdrop-filter: blur(16px);
+    backdrop-filter: blur(16px);
+    background: rgba(11,11,16,0.92);
+    border-bottom:1px solid var(--border);
+    transition: box-shadow var(--dur-base) ease, border-color var(--dur-base) ease;
+  }
+  nav.nav-scrolled{ box-shadow:0 8px 24px rgba(0,0,0,0.35); border-color:rgba(255,255,255,0.12); }
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))){
+    nav{ background: rgba(11,11,16,0.7); }
+  }
+  .nav-inner{
+    max-width:1120px; margin:0 auto; padding:16px 24px;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .logo{ display:flex; align-items:center; gap:8px; font-size:15px; font-weight:800; }
+  .logo-mark{
+    width:30px; height:30px;
+    display:flex; align-items:center; justify-content:center;
+    filter: drop-shadow(0 0 7px rgba(255,77,109,0.55));
+  }
+  .logo-mark svg{ width:23px; height:23px; display:block; }
+  .nav-cta{
+    padding:9px 18px; border-radius:100px; background:var(--text); color:var(--bg);
+    font-size:13px; font-weight:700;
+  }
+
+  /* ---------- AUTH: BOUTONS NAV ---------- */
+  .btn-connexion{
+    padding:8px 10px; background:none; border:none; color:var(--text-dim);
+    font-size:13px; font-weight:700; white-space:nowrap;
+  }
+  .btn-connexion:hover{ color:var(--text); }
+
+  .btn-commencer{
+    font-family:'Archivo Black', Impact, sans-serif;
+    text-transform:uppercase;
+    letter-spacing:0.01em;
+    padding:11px 20px;
+    border-radius:100px;
+    background: linear-gradient(135deg, var(--coral), var(--yellow));
+    color:#0B0B10;
+    font-size:13px;
+    white-space:nowrap;
+    box-shadow: 0 6px 18px rgba(255,77,109,0.4);
+    animation: navPulse 2.6s ease-in-out infinite;
+  }
+  @keyframes navPulse{
+    0%,100%{ box-shadow: 0 6px 18px rgba(255,77,109,0.4); transform:scale(1); }
+    50%{ box-shadow: 0 6px 26px rgba(255,216,77,0.55); transform:scale(1.045); }
+  }
+  .nav-user-greeting{ font-size:13px; font-weight:700; color:var(--text-dim); white-space:nowrap; }
+
+  @media (max-width:420px){
+    .btn-commencer{ padding:9px 14px; font-size:11.5px; }
+    .btn-connexion{ padding:6px 6px; font-size:11.5px; }
+    .nav-user-greeting{ font-size:11.5px; }
+  }
+
+  /* ---------- AUTH: PAGES INSCRIPTION / CONNEXION ---------- */
+  .auth-view{
+    display:none;
+    position:fixed; inset:0; z-index:300;
+    background: linear-gradient(135deg, #0B0B10 0%, #0F0F18 50%, #0A0A12 100%);
+    overflow-y:auto;
+    -webkit-overflow-scrolling: touch;
+  }
+  .auth-view.active{
+    display:block;
+    animation: authViewIn var(--dur-slow) var(--ease-out-snap) both;
+  }
+  @keyframes authViewIn{ from{ opacity:0; } to{ opacity:1; } }
+  .auth-topbar{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:20px 24px; max-width:1120px; margin:0 auto;
+  }
+  .auth-close{
+    width:36px; height:36px; border-radius:50%; background:var(--card); border:1px solid var(--border);
+    color:var(--text-dim); font-size:15px; display:flex; align-items:center; justify-content:center;
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease;
+  }
+  .auth-close:hover{ transform:translateY(-1px) rotate(90deg); border-color:rgba(255,255,255,0.25); }
+  .auth-card{
+    max-width:400px; margin:24px auto 80px; padding:0 24px;
+    animation: authCardIn var(--dur-slower) var(--ease-out-snap) both;
+    animation-delay:80ms;
+  }
+  @keyframes authCardIn{ from{ opacity:0; transform:translateY(14px); } to{ opacity:1; transform:translateY(0); } }
+  .auth-title{ font-family:'Archivo Black'; font-size:28px; margin-bottom:8px; }
+  .auth-sub{ color:#D5D5DB; font-size:14px; margin-bottom:26px; line-height:1.5; }
+  .google-btn-container{ margin-bottom:18px; display:flex; justify-content:center; min-height:44px; }
+  .google-btn-fake{
+    width:100%; display:flex; align-items:center; justify-content:center; gap:10px;
+    padding:12px; border-radius:10px; background:#fff; border:1px solid #dadce0;
+    color:#3c4043; font-weight:600; font-size:14px; font-family:'Inter', Roboto, sans-serif;
+    transition: transform var(--dur-fast) var(--ease-out-snap), box-shadow var(--dur-fast) ease, background var(--dur-fast) ease;
+  }
+  .google-btn-fake:hover{ background:#f8f9fa; transform:translateY(-1px); box-shadow:0 4px 14px rgba(0,0,0,0.15); }
+  .google-btn-fake:active{ transform:translateY(0) scale(0.98); transition-duration:var(--dur-instant); }
+  .auth-divider{
+    display:flex; align-items:center; gap:12px; margin:18px 0; color:var(--text-dim); font-size:12px; font-weight:700;
+    text-transform:uppercase; letter-spacing:0.03em;
+  }
+  .auth-divider::before, .auth-divider::after{ content:''; flex:1; height:1px; background:var(--border); }
+  .auth-form{ display:flex; flex-direction:column; gap:12px; }
+  .auth-form.shake{ animation: authShake 420ms var(--ease-in-out-soft); }
+  @keyframes authShake{
+    10%,90%{ transform:translateX(-1px); }
+    20%,80%{ transform:translateX(3px); }
+    30%,50%,70%{ transform:translateX(-6px); }
+    40%,60%{ transform:translateX(6px); }
+  }
+  .auth-form input{
+    width:100%; padding:14px 16px; border-radius:12px; background:var(--card); border:1px solid var(--border);
+    color:var(--text); font-size:14.5px; font-family:'Inter', sans-serif;
+    transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+  }
+  .auth-form input:focus{ outline:none; border-color:var(--coral); box-shadow: 0 0 0 4px rgba(255,77,109,0.14); }
+  .auth-form input::placeholder{ color:var(--text-dim); }
+  .auth-error{
+    font-size:13px; color:var(--coral); display:flex; align-items:center; gap:6px;
+    max-height:0; opacity:0; overflow:hidden;
+    transition: max-height var(--dur-base) var(--ease-out-snap), opacity var(--dur-base) ease;
+  }
+  .auth-success{
+    font-size:13px; color:var(--mint); display:flex; align-items:center; gap:6px;
+    max-height:0; opacity:0; overflow:hidden;
+    transition: max-height var(--dur-base) var(--ease-out-snap), opacity var(--dur-base) ease;
+  }
+  .auth-error.show{ max-height:40px; opacity:1; }
+  .auth-success.show{ max-height:40px; opacity:1; }
+  .auth-submit{
+    margin-top:6px; padding:15px; border-radius:12px; font-weight:800; font-size:14.5px;
+    background: linear-gradient(135deg, var(--coral), #FF7A5C); color:#fff;
+    box-shadow:0 8px 24px rgba(255,77,109,0.3);
+    position:relative; overflow:hidden; border:none; cursor:pointer;
+    display:flex; align-items:center; justify-content:center; gap:9px;
+    transition: transform var(--dur-fast) var(--ease-out-snap), box-shadow var(--dur-fast) var(--ease-out-snap);
+  }
+  .auth-submit::before{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.35) 50%, transparent 65%);
+    transform:translateX(-120%); transition:transform var(--dur-slower) var(--ease-out-snap);
+  }
+  .auth-submit:hover:not(:disabled){ transform:translateY(-2px); box-shadow:0 12px 30px rgba(255,77,109,0.42); }
+  .auth-submit:hover:not(:disabled)::before{ transform:translateX(120%); }
+  .auth-submit:active:not(:disabled){ transform:translateY(0) scale(0.98); transition-duration:var(--dur-instant); }
+  .auth-submit:disabled{ opacity:0.85; cursor:default; }
+  .auth-submit .btn-spin{
+    width:15px; height:15px; border-radius:50%; border:2px solid rgba(255,255,255,0.35); border-top-color:#fff;
+    display:none; animation:premiumSpin 0.8s linear infinite;
+  }
+  .auth-submit.loading .btn-label{ opacity:0; }
+  .auth-submit.loading .btn-spin{ display:inline-block; position:absolute; }
+  .auth-forgot{ text-align:right; margin-top:-4px; }
+  .auth-forgot a{ font-size:12.5px; color:var(--text-dim); font-weight:600; transition:color var(--dur-fast) ease; }
+  .auth-forgot a:hover{ color:var(--text); }
+  .auth-switch{ text-align:center; margin-top:24px; font-size:13.5px; color:#D5D5DB; }
+  .auth-switch a{ color:var(--mint); font-weight:700; transition:opacity var(--dur-fast) ease; }
+  .auth-switch a:hover{ opacity:0.75; }
+  .auth-protoype-note{
+    margin-top:28px; padding:12px 14px; border-radius:12px;
+    background:var(--bg-soft); border:1px solid var(--border);
+    font-size:12px; color:var(--text-dim); line-height:1.6;
+  }
+
+  .hero{ padding:88px 0 64px; position:relative; overflow:hidden; }
+  .hero .wrap{ position:relative; z-index:2; }
+  .eyebrow{
+    display:inline-flex; align-items:center; gap:8px;
+    padding:6px 14px; border-radius:100px;
+    background:var(--coral-dim); border:1px solid rgba(255,77,109,0.3);
+    font-size:12.5px; font-weight:700; color:var(--coral);
+    margin-bottom:24px;
+  }
+  .eyebrow-dot{ width:6px; height:6px; border-radius:50%; background:var(--coral); animation:pulse 2s infinite; }
+  @keyframes pulse{ 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  h1.display{
+    font-size:clamp(40px, 6.4vw, 84px);
+    line-height:0.96;
+    margin-bottom:24px;
+    max-width:900px;
+    text-shadow: 0 4px 32px rgba(0,0,0,0.6);
+  }
+  h1.display .accent{ color:var(--coral); }
+  h1.display .accent2{ color: var(--yellow); }
+
+  .hero-sub{
+    font-size:18px; color:#FFFFFF; max-width:540px; margin-bottom:40px; font-weight:500;
+  }
+
+  .hero-flex{
+    display:grid;
+    grid-template-columns: minmax(0,1fr) minmax(0,400px);
+    gap:56px;
+  }
+  .hero-left{ min-width:0; }
+  .hero-right{ min-width:0; display:flex; justify-content:center; align-items:center; }
+
+  .upload-card{
+    max-width:460px;
+    margin-top:36px;
+    padding:0;
+  }
+  @media (max-width:900px){
+    .upload-card{ margin-top:0; }
+  }
+  .upload-step{ margin-bottom:22px; }
+  .upload-step-label{
+    display:flex; align-items:center; gap:8px;
+    font-size:12.5px; font-weight:800; color:var(--text-dim);
+    text-transform:uppercase; letter-spacing:0.03em;
+    margin-bottom:12px;
+  }
+  .step-num{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:20px; height:20px; border-radius:6px; flex-shrink:0;
+    background:var(--coral-dim); color:var(--coral);
+    font-family:'Archivo Black', sans-serif; font-size:11px;
+  }
+  .step-required{
+    margin-left:auto; font-size:10.5px; font-weight:700;
+    color:var(--text-dim); text-transform:none; opacity:0.7;
+  }
+
+  .panel{
+    background:var(--card); border:1px solid var(--border); border-radius:24px; padding:28px;
+  }
+  .drop{
+    border:2px dashed rgba(255,255,255,0.14);
+    border-radius:18px;
+    padding:40px 20px;
+    text-align:center;
+    transition: border-color var(--dur-base) ease, background var(--dur-base) ease, transform var(--dur-base) var(--ease-out-snap);
+    cursor:pointer;
+    background: var(--bg-soft);
+  }
+  .drop:hover{
+    border-color: var(--coral);
+    background: var(--coral-dim);
+  }
+  .drop.drag{
+    border-color: var(--coral);
+    background: var(--coral-dim);
+    transform: scale(1.015);
+  }
+  .drop-icon{ font-size:34px; margin-bottom:14px; transition: transform var(--dur-base) var(--ease-spring); }
+  .drop.drag .drop-icon{ transform: translateY(-4px) scale(1.08); }
+  .drop-title{ font-weight:700; font-size:16px; margin-bottom:6px; }
+  .drop-sub{ font-size:13.5px; color:var(--text-dim); }
+  .drop input{ display:none; }
+
+  .preview-img{
+    max-width:100%; max-height:260px; border-radius:14px; margin:0 auto 16px; display:block;
+    box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+  }
+
+  .platform-row{
+    display:flex; gap:8px; margin-top:18px; flex-wrap:wrap;
+  }
+  .platform-chip{
+    font-size:12.5px; font-weight:600; padding:6px 12px; border-radius:100px;
+    background:var(--bg-soft); border:1px solid var(--border); color:var(--text-dim);
+  }
+
+  .roast-btn{
+    width:100%; margin-top:20px; padding:16px; border-radius:14px;
+    background: linear-gradient(135deg, var(--coral), #FF7A5C);
+    color:#fff; font-weight:800; font-size:15.5px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    box-shadow: 0 8px 24px rgba(255,77,109,0.35);
+    transition: transform var(--dur-fast) var(--ease-out-snap),
+                box-shadow var(--dur-fast) var(--ease-out-snap);
+  }
+  .roast-btn:hover:not(:disabled){ transform: translateY(-2px); box-shadow: 0 11px 30px rgba(255,77,109,0.45); }
+  .roast-btn:active:not(:disabled){ transform: translateY(0) scale(0.98); transition-duration: var(--dur-instant); }
+  .roast-btn:disabled{ opacity:0.5; cursor:not-allowed; transform:none; }
+
+  .free-note{ text-align:center; font-size:12.5px; color:var(--text-dim); margin-top:12px; }
+
+  /* ---------- HERO CTA (bouton réutilisé partout ailleurs sur le site) ---------- */
+  .hero-cta-primary{
+    position:relative; overflow:hidden;
+    font-family:'Archivo Black', Impact, sans-serif;
+    text-transform:uppercase; letter-spacing:0.01em;
+    padding:20px 36px; border-radius:100px;
+    background: linear-gradient(135deg, var(--coral), var(--yellow));
+    color:#0B0B10; font-size:17px;
+    display:inline-flex; align-items:center; gap:10px;
+    box-shadow: 0 10px 30px rgba(255,77,109,0.4);
+    transition: transform var(--dur-fast) var(--ease-out-snap),
+                box-shadow var(--dur-fast) var(--ease-out-snap);
+    border:none; cursor:pointer;
+  }
+  .hero-cta-primary::before{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.4) 50%, transparent 65%);
+    transform:translateX(-120%);
+    transition:transform var(--dur-slower) var(--ease-out-snap);
+  }
+  .hero-cta-primary:hover{
+    transform: translateY(-3px) scale(1.02);
+    box-shadow: 0 14px 38px rgba(255,77,109,0.5);
+  }
+  .hero-cta-primary:hover::before{ transform:translateX(120%); }
+  .hero-cta-primary:active{
+    transform: translateY(-1px) scale(0.98);
+    transition-duration: var(--dur-instant);
+  }
+  .hero-cta-note{ font-size:13px; color:var(--text-dim); font-weight:600; padding-left:4px; }
+
+  /* ---------- VISUEL ANIMÉ (démonstration avant/après dans le hero) ---------- */
+  .demo-phone{
+    position:relative; width:100%; max-width:290px;
+    animation: demoPhoneFloat 6s ease-in-out infinite;
+  }
+  @keyframes demoPhoneFloat{
+    0%, 100%{ transform:translateY(0px) rotate(0deg); }
+    50%{ transform:translateY(-14px) rotate(0.6deg); }
+  }
+  .demo-device{
+    position:relative; aspect-ratio: 9 / 18.2;
+    background: linear-gradient(160deg, #1b1b24, #0a0a10);
+    border:1px solid rgba(255,255,255,0.12);
+    border-radius:42px; padding:14px;
+    box-shadow: 0 40px 70px rgba(0,0,0,0.55), 0 0 0 0 rgba(255,77,109,0);
+    transition: transform var(--dur-base) var(--ease-out-snap), box-shadow var(--dur-slower) ease;
+    animation: demoPhoneGlow 6s ease-in-out infinite;
+  }
+  @keyframes demoPhoneGlow{
+    0%, 100%{ box-shadow: 0 40px 70px rgba(0,0,0,0.55), 0 0 40px 0 rgba(255,77,109,0.08); }
+    50%{ box-shadow: 0 50px 90px rgba(0,0,0,0.55), 0 0 60px 6px rgba(255,216,77,0.14); }
+  }
+  .demo-phone:hover .demo-device{
+    transform: translateY(-6px) scale(1.015);
+    box-shadow: 0 55px 100px rgba(0,0,0,0.6), 0 0 70px 8px rgba(255,77,109,0.2);
+  }
+  .demo-notch{
+    position:absolute; top:14px; left:50%; transform:translateX(-50%);
+    width:74px; height:20px; background:#0a0a10; border-radius:100px; z-index:3;
+  }
+  .demo-screen{
+    position:relative; width:100%; height:100%;
+    background: linear-gradient(165deg, #17171F, #0d0d13);
+    border-radius:30px; overflow:hidden;
+  }
+  .demo-frame{ position:absolute; inset:0; padding:32px 18px 18px; display:flex; flex-direction:column; }
+  .demo-frame-before{ display:none; }
+  .demo-frame-after{ opacity:1; animation:none; }
+  @keyframes demoBefore{ 0%,38%{ opacity:1; } 48%,100%{ opacity:0; } }
+  @keyframes demoAfter{ 0%,38%{ opacity:0; } 48%,90%{ opacity:1; } 100%{ opacity:0; } }
+
+  .demo-badge{
+    display:inline-flex; align-self:flex-start;
+    padding:5px 12px; border-radius:100px;
+    font-size:10px; font-weight:800; letter-spacing:0.02em; text-transform:uppercase;
+    margin-bottom:24px;
+  }
+  .demo-badge-before{ background:var(--coral-dim); color:var(--coral); }
+  .demo-badge-after{ background:rgba(94,234,212,0.14); color:var(--mint); }
+  .demo-meta{ position:absolute; top:52px; right:18px; font-size:9.5px; color:var(--text-dim); font-weight:600; }
+
+  .demo-mock-shot{
+    flex:1; margin-top:6px; border-radius:16px;
+    background: linear-gradient(160deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+    border:1px dashed rgba(255,255,255,0.14);
+    display:flex; align-items:center; justify-content:center; font-size:30px; opacity:0.5;
+  }
+
+  .demo-score{ font-family:'Archivo Black', sans-serif; font-size:44px; line-height:1; color:var(--yellow); margin-top:2px; }
+  .demo-score span{ font-size:15px; color:var(--text-dim); font-family:'Inter',sans-serif; font-weight:700; }
+  .demo-verdict{ font-family:'Archivo Black', sans-serif; font-size:12.5px; text-transform:uppercase; color:#fff; margin:10px 0 14px; }
+  .demo-roast-line{ height:9px; border-radius:100px; background:rgba(255,255,255,0.16); margin-bottom:8px; }
+  .demo-roast-line.short{ width:65%; }
+
+  .demo-float-badge{
+    position:absolute; bottom:-14px; right:-6px;
+    background:var(--card); border:1px solid var(--border);
+    padding:8px 14px; border-radius:100px;
+    font-size:11px; font-weight:800; color:#fff;
+    display:flex; align-items:center; gap:6px;
+    box-shadow:0 10px 24px rgba(0,0,0,0.4);
+    transform:rotate(-3deg);
+    white-space:nowrap;
+    animation: demoBadgeSway 6s ease-in-out infinite;
+    animation-delay: 0.3s;
+  }
+  @keyframes demoBadgeSway{
+    0%, 100%{ transform:rotate(-3deg) translateY(0px); }
+    50%{ transform:rotate(-5deg) translateY(-5px); }
+  }
+  .demo-float-badge .dot{ width:6px; height:6px; border-radius:50%; background:var(--mint); animation:pulse 2s infinite; }
+
+  @media (max-width:900px){
+    .hero-flex{ grid-template-columns:1fr; gap:32px; display:flex; flex-direction:column; }
+    .hero-right{ order:-1; }
+    .demo-phone{ max-width:240px; margin:0 auto; }
+  }
+
+  /* ---------- SECTION PITCH (reprend le style du H1 hero, plus bas dans la page) ---------- */
+  .pitch-section{ padding:100px 24px; text-align:center; border-top:1px solid var(--border); }
+  .pitch-title{ font-size:clamp(40px, 6.4vw, 84px); line-height:0.96; max-width:900px; margin:0 auto 24px; text-shadow: 0 4px 32px rgba(0,0,0,0.6); }
+  .pitch-sub{ max-width:560px; margin:0 auto 36px; text-align:center; }
+  .pitch-section .hero-cta-primary{ margin:0 auto; }
+
+  /* ---------- MUR D'APERÇUS ANIMÉ (fond immersif du hero) ---------- */
+  .wall-container{
+    position:absolute; inset:0; z-index:0;
+    display:flex; gap:14px; padding:0 8px;
+  }
+  .wall-col{ flex:1; overflow:hidden; position:relative; height:100%; min-width:0; }
+  .wall-col-inner{
+    display:flex; flex-direction:column; gap:14px;
+    animation: wallScrollUp 42s linear infinite;
+    will-change: transform;
+  }
+  .wall-col.reverse .wall-col-inner{ animation-name: wallScrollDown; }
+  .wall-col:nth-child(2) .wall-col-inner{ animation-duration:56s; }
+  .wall-col:nth-child(3) .wall-col-inner{ animation-duration:33s; }
+  .wall-col:nth-child(4) .wall-col-inner{ animation-duration:49s; }
+  @keyframes wallScrollUp{ from{ transform:translateY(0); } to{ transform:translateY(-50%); } }
+  @keyframes wallScrollDown{ from{ transform:translateY(-50%); } to{ transform:translateY(0); } }
+
+  .wall-card{
+    background: linear-gradient(160deg, rgba(28,28,38,0.92), rgba(15,15,22,0.92));
+    border:1px solid rgba(255,255,255,0.09);
+    border-radius:16px; padding:16px 14px; flex-shrink:0;
+  }
+  .wall-card-score{ font-family:'Archivo Black'; font-size:32px; line-height:1; color:var(--yellow); }
+  .wall-card-score span{ font-size:13px; color:var(--text-dim); font-family:'Inter', sans-serif; font-weight:700; }
+  .wall-card-verdict{
+    font-family:'Archivo Black'; font-size:12.5px; text-transform:uppercase;
+    color:#fff; margin:6px 0 8px; letter-spacing:0.01em;
+  }
+  .wall-card-roast{
+    font-size:12px; color:#B8B8C0; line-height:1.4;
+    filter: blur(3.5px); user-select:none;
+  }
+
+  .hero-overlay{
+    position:absolute; inset:0; z-index:1; pointer-events:none;
+    background: linear-gradient(180deg, rgba(9,9,13,0.6) 0%, rgba(9,9,13,0.76) 45%, rgba(9,9,13,0.92) 100%);
+  }
+
+  .activity-toast{
+    position:fixed; bottom:20px; right:20px; z-index:100;
+    display:flex; align-items:center; gap:8px;
+    background:rgba(23,23,31,0.92); border:1px solid var(--border);
+    padding:10px 16px; border-radius:100px;
+    font-size:12.5px; font-weight:700; color:#fff;
+    -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+    box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    opacity:0; animation: toastFade 6s ease-in-out infinite;
+    max-width:calc(100% - 40px);
+    pointer-events:none;
+  }
+  .activity-dot{ width:6px; height:6px; border-radius:50%; background:var(--mint); flex-shrink:0; }
+  #activityText{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  @keyframes toastFade{
+    0%{ opacity:0; transform:translateY(8px); }
+    10%,28%{ opacity:1; transform:translateY(0); }
+    38%{ opacity:0; transform:translateY(8px); }
+    100%{ opacity:0; }
+  }
+
+  @media (max-width:640px){
+    .wall-container{ gap:8px; }
+    .wall-col:nth-child(n+3){ display:none; }
+  }
+  @media (max-width:420px){
+    .activity-toast{ font-size:11px; padding:8px 12px; bottom:14px; right:14px; max-width:calc(100% - 28px); }
+  }
+
+  .loading-wrap{ display:none; text-align:center; padding:60px 20px; }
+  .loading-wrap.active{ display:block; }
+  .progress-ring-wrap{
+    position:relative;
+    width:120px; height:120px;
+    margin:0 auto 20px;
+  }
+  .progress-ring{ width:120px; height:120px; transform:rotate(-90deg); }
+  .progress-ring-bg{
+    fill:none; stroke:var(--border); stroke-width:6;
+  }
+  .progress-ring-bar{
+    fill:none; stroke:url(#progressGradient); stroke-width:6; stroke-linecap:round;
+    stroke-dasharray:326.7; stroke-dashoffset:326.7;
+    transition: stroke-dashoffset 0.25s ease-out;
+  }
+  .progress-ring-percent{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Archivo Black', Impact, sans-serif;
+    font-size:26px; color:#F5F5F7;
+  }
+  .loading-text{ font-weight:700; font-size:15px; color:#F5F5F7; }
+  .loading-sub{ font-size:13px; color:#C0C0C5; margin-top:6px; }
+
+  .analysis-ready-wrap{
+    display:none; text-align:center;
+    padding:36px 28px; margin-top:24px;
+    background:var(--card); border:1px solid var(--border); border-radius:20px;
+  }
+  .analysis-ready-wrap.active{ display:block; }
+  .analysis-ready-icon{ font-size:32px; margin-bottom:12px; }
+  .analysis-ready-title{ font-family:'Archivo Black', Impact, sans-serif; text-transform:uppercase; font-size:18px; margin-bottom:6px; }
+  .analysis-ready-sub{ font-size:13.5px; color:var(--text-dim); margin-bottom:22px; }
+
+  .report-section{
+    display:none;
+    position:fixed; inset:0; z-index:200;
+    background: linear-gradient(135deg, #0B0B10 0%, #0F0F18 50%, #0A0A12 100%);
+    overflow-y:auto;
+    padding:24px 0 80px;
+    opacity:0;
+    transition: opacity var(--dur-slow) var(--ease-in-out-soft);
+  }
+  .report-section.active{ display:block; opacity:1; }
+  body.report-modal-open{ overflow:hidden; }
+
+  .report-modal-close{
+    position:sticky; top:0; z-index:10;
+    display:flex; justify-content:flex-end;
+    max-width:1120px; margin:0 auto 8px; padding:0 24px;
+  }
+  .report-modal-close-btn{
+    width:40px; height:40px; border-radius:50%;
+    background:var(--card); border:1px solid var(--border);
+    color:var(--text); font-size:18px;
+    display:flex; align-items:center; justify-content:center;
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease, color var(--dur-fast) ease;
+  }
+  .report-modal-close-btn:hover{ border-color:var(--coral); color:var(--coral); transform:rotate(90deg); }
+
+  .report-body-wrap{ position:relative; }
+  .report-body-wrap .report-layout{
+    filter:blur(0px);
+    transition: filter var(--dur-slower) var(--ease-in-out-soft);
+  }
+  .report-body-wrap.locked .report-layout{ filter:blur(16px); pointer-events:none; user-select:none; }
+
+  /* Flash de célébration au moment précis où le crédit est consommé et le flou se lève */
+  .report-body-wrap::after{
+    content:''; position:absolute; inset:0; z-index:6;
+    background: radial-gradient(circle at 50% 40%, rgba(94,234,212,0.35), transparent 60%);
+    opacity:0; pointer-events:none;
+  }
+  .report-body-wrap.unlock-flash::after{
+    animation: unlockFlash 700ms var(--ease-out-snap);
+  }
+  @keyframes unlockFlash{
+    0%{ opacity:0; }
+    30%{ opacity:1; }
+    100%{ opacity:0; }
+  }
+  .report-paywall{
+    display:none;
+    position:absolute; inset:0; z-index:5;
+    flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; padding:32px 20px;
+    background: rgba(11,11,16,0.5);
+    -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px);
+    border-radius:24px;
+  }
+  .report-body-wrap.locked .report-paywall{
+    display:flex;
+    animation: paywallIn var(--dur-slow) var(--ease-out-snap) both;
+  }
+  @keyframes paywallIn{
+    from{ opacity:0; transform:scale(0.97); }
+    to{ opacity:1; transform:scale(1); }
+  }
+  .report-paywall-icon{
+    font-size:34px; margin-bottom:12px;
+    animation: paywallIconFloat 3s ease-in-out infinite;
+  }
+  @keyframes paywallIconFloat{
+    0%,100%{ transform:translateY(0); }
+    50%{ transform:translateY(-6px); }
+  }
+  .report-paywall-title{ font-family:'Archivo Black', Impact, sans-serif; text-transform:uppercase; font-size:23px; margin-bottom:6px; text-shadow:0 4px 24px rgba(0,0,0,0.7); }
+  .report-paywall-sub{ font-size:13.5px; color:var(--text-dim); max-width:380px; margin-bottom:26px; text-shadow:0 4px 24px rgba(0,0,0,0.7); }
+
+  .paywall-pricing{
+    display:flex; gap:14px; flex-wrap:wrap; justify-content:center; max-width:560px;
+  }
+  .paywall-tier{
+    position:relative;
+    flex:1 1 150px; max-width:170px;
+    background:var(--card); border:1.5px solid var(--border); border-radius:18px;
+    padding:22px 14px 16px;
+    display:flex; flex-direction:column; align-items:center;
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+  }
+  .paywall-tier:hover{ transform:translateY(-4px); border-color:rgba(255,255,255,0.25); box-shadow:0 10px 26px rgba(0,0,0,0.3); }
+  .paywall-tier:active{ transform:translateY(-1px) scale(0.98); transition-duration:var(--dur-instant); }
+  .paywall-tier:disabled{ opacity:0.5; pointer-events:none; }
+  .paywall-tier-name{ font-size:12.5px; font-weight:700; color:var(--text-dim); margin-bottom:6px; }
+  .paywall-tier-price{ font-family:'Archivo Black', Impact, sans-serif; font-size:22px; color:#F5F5F7; margin-bottom:4px; }
+  .paywall-tier-unit{ font-size:10.5px; color:var(--mint); font-weight:700; }
+  .paywall-tier-badge{
+    position:absolute; top:-11px; left:50%; transform:translateX(-50%);
+    font-size:9px; font-weight:800; letter-spacing:0.03em; text-transform:uppercase;
+    padding:4px 10px; border-radius:100px; white-space:nowrap;
+  }
+
+  .paywall-tier-popular{ border-color:rgba(94,234,212,0.5); }
+  .paywall-tier-popular .paywall-tier-badge{ background:var(--mint); color:#0B0B10; }
+
+  .paywall-tier-best{
+    border:2px solid transparent;
+    background: linear-gradient(var(--card), var(--card)) padding-box,
+                linear-gradient(135deg, var(--coral), var(--yellow)) border-box;
+    transform:scale(1.06);
+  }
+  .paywall-tier-best:hover{ transform:scale(1.06) translateY(-3px); }
+  .paywall-tier-best .paywall-tier-badge{ background:linear-gradient(135deg, var(--coral), var(--yellow)); color:#0B0B10; }
+  .paywall-tier-best .paywall-tier-price{ font-size:25px; }
+
+  .paywall-loading{
+    display:none; margin-top:18px; font-size:13px; font-weight:700; color:var(--text-dim);
+  }
+  .paywall-loading.active{ display:block; }
+
+  @media (max-width:480px){
+    .paywall-pricing{ flex-direction:column; align-items:center; }
+    .paywall-tier{ max-width:280px; width:100%; }
+    .paywall-tier-best{ transform:scale(1); }
+    .paywall-tier-best:hover{ transform:translateY(-2px); }
+  }
+
+  .report-layout{
+    display:grid; grid-template-columns: 380px 1fr; gap:48px; align-items:start;
+  }
+  @media (max-width:880px){ .report-layout{ grid-template-columns:1fr; } }
+
+  .story-card{
+    width:100%; max-width:380px;
+    min-height:520px;
+    aspect-ratio: 9/16;
+    background: linear-gradient(160deg, #1A1A24 0%, #0F0F16 100%);
+    border-radius:32px; border:1px solid rgba(255,255,255,0.1);
+    padding:26px 22px; position:relative; overflow:hidden;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+    display:flex; flex-direction:column;
+    transition: transform var(--dur-base) var(--ease-out-snap), box-shadow var(--dur-base) ease;
+  }
+  .story-card:hover{
+    transform:translateY(-4px);
+    box-shadow: 0 38px 90px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.07);
+  }
+  .story-card::before{
+    content:''; position:absolute; top:0; left:0; right:0; height:180px;
+    background: radial-gradient(ellipse at top, rgba(255,77,109,0.25), transparent 70%);
+    pointer-events:none;
+  }
+  .story-brand{ display:flex; align-items:center; gap:6px; font-size:11px; font-weight:800; color:var(--text-dim); margin-bottom:auto; }
+  .story-brand .dot{ width:5px; height:5px; border-radius:50%; background:var(--coral); }
+
+  .story-score-wrap{ text-align:center; margin:14px 0; }
+  .story-score{ font-family:'Archivo Black'; font-size:88px; line-height:0.9; color:var(--yellow); text-shadow:0 0 40px rgba(255,216,77,0.4); }
+  .story-score-sub{ font-size:13px; font-weight:700; color:var(--text-dim); letter-spacing:0.05em; text-transform:uppercase; margin-top:4px; }
+
+  .story-verdict{
+    font-family:'Archivo Black'; font-size:19px; text-align:center; line-height:1.15;
+    margin:10px 0 16px; color:#fff;
+  }
+
+  .story-punch{
+    background:rgba(255,255,255,0.06); border-radius:14px; padding:14px 16px;
+    font-size:13.5px; font-weight:500; text-align:center; margin-bottom:10px;
+    border-left:3px solid var(--coral);
+  }
+
+  .story-footer{ margin-top:auto; text-align:center; font-size:11px; color:var(--text-dim); font-weight:700; letter-spacing:0.03em; }
+
+  .report-header{ margin-bottom:24px; }
+  .report-title{ font-family:'Archivo Black'; font-size:32px; margin-bottom:8px; }
+  .report-sub{ color:#D5D5DB; font-size:15px; }
+
+  .subscore-grid{
+    display:grid; grid-template-columns: repeat(3, 1fr); gap:14px; margin-bottom:28px;
+  }
+  @media (max-width:560px){ .subscore-grid{ grid-template-columns:1fr; } }
+  .subscore-card{
+    background:var(--card); border:1px solid var(--border); border-radius:16px; padding:18px;
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease;
+  }
+  .subscore-card:hover{ transform:translateY(-3px); border-color:rgba(255,255,255,0.18); }
+  .subscore-label{ font-size:12.5px; font-weight:700; color:var(--text-dim); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:8px; }
+  .subscore-bar-bg{ height:8px; border-radius:100px; background:var(--bg-soft); overflow:hidden; margin-bottom:8px; }
+  .subscore-bar{ height:100%; border-radius:100px; transition: width 1.1s var(--ease-out-snap); }
+  .subscore-val{ font-family:'Archivo Black'; font-size:22px; }
+
+  .roast-toast-grid{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:24px; }
+  @media (max-width:640px){ .roast-toast-grid{ grid-template-columns:1fr; } }
+  .rt-card{
+    border-radius:18px; padding:20px;
+    transition: transform var(--dur-base) var(--ease-out-snap), box-shadow var(--dur-base) ease;
+  }
+  .rt-card:hover{ transform:translateY(-3px); box-shadow:0 14px 34px rgba(0,0,0,0.25); }
+  .rt-card.roast{ background:var(--coral-dim); border:1px solid rgba(255,77,109,0.25); }
+  .rt-card.toast{ background:var(--mint-dim); border:1px solid rgba(94,234,212,0.25); }
+  .rt-label{ font-weight:800; font-size:13px; text-transform:uppercase; letter-spacing:0.04em; margin-bottom:12px; display:flex; align-items:center; gap:6px; }
+  .rt-card.roast .rt-label{ color:var(--coral); }
+  .rt-card.toast .rt-label{ color:var(--mint); }
+  .rt-list{ list-style:none; display:flex; flex-direction:column; gap:10px; }
+  .rt-list li{ font-size:14px; padding-left:16px; position:relative; }
+  .rt-list li::before{ content:'—'; position:absolute; left:0; opacity:0.5; }
+
+  .premium-teaser-card{
+    transition: transform var(--dur-base) var(--ease-out-snap), border-color var(--dur-base) ease, box-shadow var(--dur-base) ease;
+  }
+  .premium-teaser-card:hover{
+    transform:translateY(-3px);
+    border-color:rgba(255,216,77,0.45) !important;
+    box-shadow:0 16px 36px rgba(255,216,77,0.1);
+  }
+
+  /* L'entrée échelonnée des cartes du rapport ne se déclenche qu'au déblocage
+     réel (retrait de .locked) — pas au chargement, où tout serait de toute
+     façon flouté et donc invisible derrière le paywall. */
+  .report-body-wrap:not(.locked) .subscore-card{ animation: staggerIn var(--dur-slow) var(--ease-out-snap) both; }
+  .report-body-wrap:not(.locked) .subscore-card:nth-child(1){ animation-delay:0ms; }
+  .report-body-wrap:not(.locked) .subscore-card:nth-child(2){ animation-delay:70ms; }
+  .report-body-wrap:not(.locked) .subscore-card:nth-child(3){ animation-delay:140ms; }
+  .report-body-wrap:not(.locked) .rt-card.roast{ animation: staggerIn var(--dur-slow) var(--ease-out-snap) both; animation-delay:190ms; }
+  .report-body-wrap:not(.locked) .rt-card.toast{ animation: staggerIn var(--dur-slow) var(--ease-out-snap) both; animation-delay:250ms; }
+  .report-body-wrap:not(.locked) .premium-teaser-card{ animation: staggerIn var(--dur-slow) var(--ease-out-snap) both; animation-delay:310ms; }
+
+  /* ---------- Carte Premium (4 états) : cross-fade entre états, skeleton de
+     génération, entrée échelonnée des résultats, micro-feedback copier. ---------- */
+  .premium-state{ animation: stateCrossFade var(--dur-slow) var(--ease-out-snap) both; }
+  @keyframes stateCrossFade{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:translateY(0); } }
+
+  .premium-generate-btn{
+    padding:14px 22px; border-radius:14px; font-weight:800; font-size:14px;
+    background: linear-gradient(135deg, var(--yellow), #FFB84D); color:#0B0B10;
+    box-shadow: 0 8px 22px rgba(255,216,77,0.3);
+    display:inline-flex; align-items:center; gap:8px; border:none; cursor:pointer;
+    position:relative; overflow:hidden;
+    transition: transform var(--dur-fast) var(--ease-out-snap), box-shadow var(--dur-fast) var(--ease-out-snap);
+  }
+  .premium-generate-btn::before{
+    content:''; position:absolute; inset:0;
+    background:linear-gradient(115deg, transparent 35%, rgba(255,255,255,0.5) 50%, transparent 65%);
+    transform:translateX(-120%); transition:transform var(--dur-slower) var(--ease-out-snap);
+  }
+  .premium-generate-btn:hover{ transform:translateY(-2px); box-shadow:0 12px 28px rgba(255,216,77,0.4); }
+  .premium-generate-btn:hover::before{ transform:translateX(120%); }
+  .premium-generate-btn:active{ transform:translateY(0) scale(0.97); transition-duration:var(--dur-instant); }
+
+  .premium-skel-row{ height:14px; border-radius:7px; margin-bottom:10px; }
+  .premium-skel-card{ padding:14px; border-radius:12px; background:var(--bg-soft); border:1px solid var(--border); margin-bottom:10px; }
+  .premium-skel-card .premium-skel-row:nth-child(1){ width:70px; height:10px; }
+  .premium-skel-card .premium-skel-row:nth-child(2){ width:100%; }
+  .premium-skel-card .premium-skel-row:nth-child(3){ width:60%; margin-bottom:0; }
+
+  .premium-loading-tag{ display:flex; align-items:center; gap:10px; font-size:13px; font-weight:700; color:var(--text-dim); margin-bottom:16px; }
+  .premium-spin{
+    width:15px; height:15px; border-radius:50%; border:2px solid var(--border); border-top-color:var(--yellow);
+    display:inline-block; animation:premiumSpin 0.8s linear infinite; flex-shrink:0;
+  }
+  @keyframes premiumSpin{ to{ transform:rotate(360deg); } }
+
+  .premium-bio-card{
+    background:var(--bg-soft); border:1px solid var(--border); border-radius:12px; padding:14px; margin-bottom:10px;
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease;
+  }
+  .premium-bio-card:hover{ transform:translateX(3px); border-color:rgba(255,255,255,0.18); }
+  .premium-bio-style{ font-size:11px; font-weight:800; color:var(--yellow); text-transform:uppercase; letter-spacing:0.04em; margin-bottom:6px; }
+  .premium-bio-text{ font-size:14px; color:var(--text); line-height:1.5; margin-bottom:8px; }
+  .premium-copy-btn{
+    font-size:12px; font-weight:700; color:var(--mint); background:none; border:none; cursor:pointer; padding:0;
+    display:inline-flex; align-items:center; gap:5px;
+  }
+  .premium-copy-btn .check-pop{ display:inline-block; transition: transform var(--dur-instant) var(--ease-spring); }
+  .premium-copy-btn.copied .check-pop{ transform:scale(1.3); }
+
+  .premium-photo-rank{ display:flex; gap:10px; align-items:flex-start; margin-bottom:10px; }
+  .premium-photo-rank-num{
+    flex-shrink:0; width:22px; height:22px; border-radius:50%; background:var(--coral); color:#fff;
+    font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  }
+  .premium-photo-rank-text{ font-size:13px; color:var(--text-dim); line-height:1.4; }
+  .premium-photo-rank-text strong{ color:var(--text); }
+
+  .premium-section-label{ font-size:11px; font-weight:800; color:var(--yellow); text-transform:uppercase; letter-spacing:0.04em; margin:18px 0 10px; }
+  .premium-section-label:first-child{ margin-top:0; }
+
+
+  .action-row{ display:flex; gap:12px; flex-wrap:wrap; margin-top:8px; }
+  .btn-share{
+    flex:1; min-width:200px; padding:15px; border-radius:14px; font-weight:800; font-size:14.5px;
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    background: linear-gradient(135deg, var(--mint), #3ED8BE); color:#062B26;
+    box-shadow: 0 8px 24px rgba(94,234,212,0.25);
+    transition: transform var(--dur-fast) var(--ease-out-snap), box-shadow var(--dur-fast) var(--ease-out-snap);
+  }
+  .btn-share:hover{ transform:translateY(-2px); box-shadow: 0 11px 30px rgba(94,234,212,0.4); }
+  .btn-share:active{ transform:translateY(0) scale(0.98); transition-duration:var(--dur-instant); }
+  .btn-retry{
+    padding:15px 22px; border-radius:14px; font-weight:700; font-size:14.5px;
+    background:var(--card); border:1px solid var(--border); color:var(--text);
+    transition: transform var(--dur-fast) var(--ease-out-snap), border-color var(--dur-fast) ease;
+  }
+  .btn-retry:hover{ transform:translateY(-2px); border-color:rgba(255,255,255,0.25); }
+  .btn-retry:active{ transform:translateY(0) scale(0.97); transition-duration:var(--dur-instant); }
+
+  .share-toast{
+    display:none; margin-top:14px; padding:12px 16px; border-radius:12px;
+    background:var(--mint-dim); border:1px solid rgba(94,234,212,0.3);
+    font-size:13.5px; font-weight:600; color:var(--mint);
+  }
+  .share-toast.show{ display:block; }
+
+  .pricing-section{ padding:80px 0 100px; border-top:1px solid var(--border); }
+  .section-head{ text-align:center; max-width:560px; margin:0 auto 52px; }
+  .section-eyebrow{ font-size:13px; font-weight:800; color:var(--mint); text-transform:uppercase; letter-spacing:0.08em; margin-bottom:12px; }
+  .section-title{ font-family:'Archivo Black'; font-size:clamp(28px,4vw,42px); margin-bottom:14px; }
+  .section-desc{ color:#D5D5DB; font-size:15.5px; }
+
+  .pricing-grid{ display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; }
+  @media (max-width:980px){ .pricing-grid{ grid-template-columns:repeat(2,1fr); } }
+  @media (max-width:560px){ .pricing-grid{ grid-template-columns:1fr; } }
+
+  .price-card{
+    background:var(--card); border:1px solid var(--border); border-radius:22px; padding:28px 24px;
+    position:relative; display:flex; flex-direction:column;
+    transition: transform var(--dur-base) var(--ease-out-snap), border-color var(--dur-base) ease, box-shadow var(--dur-base) ease;
+  }
+  .price-card:hover{ transform:translateY(-5px); border-color:rgba(255,255,255,0.2); box-shadow:0 14px 34px rgba(0,0,0,0.35); }
+  .price-card.featured{
+    border-color: rgba(255,216,77,0.4);
+    background: linear-gradient(160deg, rgba(255,216,77,0.06), var(--card) 40%);
+  }
+  .price-card.featured:hover{ border-color: rgba(255,216,77,0.6); }
+  .featured-badge{
+    position:absolute; top:-12px; left:50%; transform:translateX(-50%);
+    background:var(--yellow); color:#0B0B10; font-size:11px; font-weight:800;
+    padding:5px 14px; border-radius:100px; text-transform:uppercase; letter-spacing:0.03em;
+  }
+  .price-tier{ font-weight:800; font-size:15px; margin-bottom:6px; }
+  .price-amount{ font-family:'Archivo Black'; font-size:34px; margin-bottom:2px; }
+  .price-period{ font-size:12.5px; color:var(--text-dim); margin-bottom:20px; font-weight:600; }
+  .price-features{ list-style:none; display:flex; flex-direction:column; gap:10px; margin-bottom:24px; flex:1; }
+  .price-features li{ font-size:13.5px; color:var(--text-dim); padding-left:20px; position:relative; }
+  .price-features li::before{ content:'✓'; position:absolute; left:0; color:var(--mint); font-weight:800; }
+  .price-cta{
+    padding:12px; border-radius:12px; font-weight:700; font-size:13.5px; text-align:center;
+    background:var(--bg-soft); border:1px solid var(--border); color:var(--text);
+  }
+  .price-card.featured .price-cta{ background:var(--yellow); color:#0B0B10; border:none; }
+
+  .pricing-note{ text-align:center; font-size:13px; color:var(--text-dim); margin-top:28px; }
+
+  footer{ border-top:1px solid var(--border); padding:56px 24px 32px; }
+  .footer-inner{
+    max-width:1120px; margin:0 auto 32px;
+    display:flex; gap:80px; flex-wrap:wrap;
+  }
+  .footer-col{ display:flex; flex-direction:column; gap:10px; }
+  .footer-col-title{
+    font-family:'Archivo Black', Impact, sans-serif; text-transform:uppercase;
+    font-size:13px; letter-spacing:0.04em; color:var(--text); margin-bottom:4px;
+  }
+  .footer-link{ font-size:13.5px; color:var(--text-dim); transition:color .15s ease; }
+  .footer-link:hover{ color:var(--coral); }
+  .footer-copyright{
+    max-width:1120px; margin:0 auto; padding-top:24px;
+    border-top:1px solid var(--border);
+    text-align:center; color:var(--text-dim); font-size:12.5px;
+  }
+  .pricing-cta-section{
+    max-width:1120px; margin:0 auto;
+    padding:32px 24px 0;
+    text-align:center;
+  }
+  .pricing-cta-section .hero-cta-primary{
+    margin:0 auto;
+  }
+
+  .nav-actions{ display:flex; align-items:center; gap:10px; }
+  @media (max-width:420px){
+    .nav-inner{ padding:14px 16px; }
+    .nav-cta{ padding:8px 11px; font-size:11.5px; }
+    .logo{ font-size:13px; }
+    .nav-actions{ gap:6px; }
+  }
+
+  .mode-note{ text-align:center; font-size:12.5px; font-weight:700; margin-top:8px; }
+
+  .demo-banner{
+    display:none;
+    background:var(--coral-dim); border:1px solid rgba(255,77,109,0.3); border-radius:14px;
+    padding:12px 16px; font-size:13px; font-weight:600; color:var(--coral); margin-bottom:20px;
+  }
+  .demo-banner.show{ display:block; }
+
+  ::selection{ background:var(--coral); color:#fff; }
+
+  /* ---------- SOCIAL PROOF SECTION ---------- */
+  .social-proof-section{ padding:0 24px 110px; }
+  .social-proof-inner{ max-width:1120px; margin:0 auto; }
+  .stats-bar{
+    display:flex; justify-content:center; gap:64px; flex-wrap:wrap;
+    padding:44px 24px; margin-bottom:56px;
+    background:var(--card); border:1px solid var(--border); border-radius:24px;
+  }
+  .stat-block{ text-align:center; }
+  .stat-number{
+    font-family:'Archivo Black', Impact, sans-serif; font-size:clamp(34px, 4vw, 48px); line-height:1;
+    background:linear-gradient(135deg, var(--coral), var(--yellow));
+    -webkit-background-clip:text; background-clip:text; -webkit-text-fill-color:transparent;
+    margin-bottom:8px;
+  }
+  .stat-label{ font-size:13.5px; color:var(--text-dim); font-weight:600; max-width:200px; }
+  .reviews-eyebrow{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-size:12.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--coral); margin-bottom:14px;
+  }
+  .reviews-title{ text-align:center; font-size:clamp(26px, 3.6vw, 40px); line-height:1.1; margin-bottom:48px; }
+  .reviews-grid{
+    display:grid; grid-template-columns:repeat(3, 1fr); gap:20px;
+  }
+  .review-card{
+    background:var(--card); border:1px solid var(--border); border-radius:20px;
+    padding:28px; display:flex; flex-direction:column;
+    transition: transform var(--dur-base) var(--ease-out-snap), border-color var(--dur-base) ease;
+  }
+  .review-card:hover{ transform:translateY(-4px); border-color:rgba(255,255,255,0.18); }
+  .review-stars{
+    display:flex; gap:2px; margin-bottom:16px; font-size:15px; line-height:1;
+  }
+  .review-stars .star{ color:rgba(255,255,255,0.18); }
+  .review-stars .star.full{ color:var(--yellow); }
+  .review-stars .star.half{ position:relative; display:inline-block; }
+  .review-stars .star.half::after{
+    content:'★'; position:absolute; top:0; left:0; width:50%; overflow:hidden;
+    color:var(--yellow);
+  }
+  .review-quote{ font-size:14.5px; line-height:1.55; color:#E4E4E9; margin-bottom:24px; flex-grow:1; }
+  .review-author{ display:flex; align-items:center; gap:12px; }
+  .review-avatar{
+    width:38px; height:38px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Archivo Black'; font-size:14px; color:#0B0B10;
+  }
+  .review-avatar.c1{ background:var(--coral); }
+  .review-avatar.c2{ background:var(--mint); }
+  .review-avatar.c3{ background:var(--yellow); }
+  .review-name{ font-size:13.5px; font-weight:700; }
+  .review-platform{ font-size:12px; color:var(--text-dim); }
+
+  /* ---------- SECTION FEATURES (bento grid) ---------- */
+  .features-section{ padding:40px 24px 110px; }
+  .features-eyebrow{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    text-align:center;
+    font-size:12.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+    color: var(--mint); margin-bottom:14px;
+  }
+  .features-title{
+    text-align:center; font-size:clamp(28px, 4vw, 46px); line-height:1.05;
+    max-width:640px; margin:0 auto 56px;
+  }
+
+  .bento-grid{
+    max-width:1120px; margin:0 auto;
+    display:grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap:20px;
+  }
+  .bento-card{
+    border-radius:24px; padding:32px;
+    border:1px solid var(--border);
+    position:relative; overflow:hidden;
+    display:flex; flex-direction:column; justify-content:flex-end;
+    min-height:180px;
+  }
+  .bento-card::before{
+    content:''; position:absolute; inset:0; opacity:0.5; pointer-events:none;
+  }
+  .bento-icon{ font-size:32px; margin-bottom:16px; position:relative; z-index:1; }
+  .bento-title{
+    font-family:'Archivo Black', Impact, sans-serif; text-transform:uppercase;
+    font-size:22px; margin-bottom:10px; position:relative; z-index:1;
+  }
+  .bento-desc{ font-size:14.5px; color:#D5D5DB; line-height:1.5; position:relative; z-index:1; max-width:360px; }
+
+  .bento-1{
+    grid-column: span 3; grid-row: span 2; min-height:380px;
+    background: linear-gradient(160deg, #1E1620 0%, #17171F 60%);
+  }
+  .bento-1::before{ background: radial-gradient(circle at 85% 15%, rgba(255,77,109,0.28), transparent 55%); }
+  .bento-1 .bento-title{ color:var(--coral); font-size:30px; }
+
+  .bento-2{
+    grid-column: span 3; grid-row: span 1;
+    background: linear-gradient(160deg, #16211E 0%, #17171F 60%);
+  }
+  .bento-2::before{ background: radial-gradient(circle at 90% 10%, rgba(94,234,212,0.25), transparent 55%); }
+  .bento-2 .bento-title{ color:var(--mint); }
+
+  .bento-3{
+    grid-column: span 3; grid-row: span 1;
+    background: linear-gradient(160deg, #211D14 0%, #17171F 60%);
+  }
+  .bento-3::before{ background: radial-gradient(circle at 90% 10%, rgba(255,216,77,0.25), transparent 55%); }
+  .bento-3 .bento-title{ color:var(--yellow); }
+
+  .bento-4{
+    grid-column: span 6;
+    background: linear-gradient(135deg, var(--coral), var(--yellow));
+    background-clip: padding-box;
+    border: none;
+    outline: 1px solid transparent;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    flex-direction:row; align-items:center; justify-content:space-between;
+    min-height:auto; padding:36px 44px;
+  }
+  .bento-4::before{ display:none; }
+  .bento-4-text{ position:relative; z-index:1; }
+  .bento-4 .bento-title{ color:#0B0B10; font-size:26px; margin-bottom:4px; }
+  .bento-4-sub{ color:rgba(11,11,16,0.75); font-size:14.5px; font-weight:600; position:relative; z-index:1; }
+  .bento-4-btn{
+    flex-shrink:0;
+    font-family:'Archivo Black', Impact, sans-serif; text-transform:uppercase; letter-spacing:0.01em;
+    padding:18px 32px; border-radius:100px;
+    background:#0B0B10; color:#fff; font-size:15px;
+    display:inline-flex; align-items:center; gap:10px;
+    position:relative; z-index:1;
+    box-shadow:0 10px 26px rgba(0,0,0,0.35);
+    border:none; cursor:pointer;
+    transition: transform .15s ease;
+  }
+  .bento-4-btn:hover{ transform: translateY(-2px) scale(1.02); }
+
+  @media (max-width:860px){
+    .bento-grid{ grid-template-columns: 1fr; }
+    .bento-1, .bento-2, .bento-3, .bento-4{ grid-column: span 1; grid-row: span 1; }
+    .bento-1{ min-height:280px; }
+    .bento-4{ flex-direction:column; align-items:flex-start; gap:20px; text-align:left; }
+    .bento-4-btn{ width:100%; justify-content:center; }
+  }
+
+  /* ---------- FAQ SECTION ---------- */
+  .faq-section{ padding:0 24px 120px; }
+  .faq-inner{ max-width:760px; margin:0 auto; }
+  .faq-eyebrow{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    font-size:12.5px; font-weight:700; letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--yellow); margin-bottom:14px;
+  }
+  .faq-title{ text-align:center; font-size:clamp(26px, 3.6vw, 40px); line-height:1.1; margin-bottom:44px; }
+  .faq-list{ display:flex; flex-direction:column; gap:12px; }
+  .faq-item{
+    background:var(--card); border:1px solid var(--border); border-radius:16px; overflow:hidden;
+    transition: border-color var(--dur-fast) ease;
+  }
+  .faq-item:hover{ border-color:rgba(255,255,255,0.18); }
+  .faq-question{
+    width:100%; display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:20px 24px; background:none; border:none; text-align:left;
+    font-family:'Inter', sans-serif; font-size:15.5px; font-weight:700; color:var(--text);
+    transition: color var(--dur-fast) ease;
+  }
+  .faq-question:hover{ color:var(--coral); }
+  .faq-icon{
+    flex-shrink:0; width:22px; height:22px; border-radius:50%;
+    background:var(--bg-soft); border:1px solid var(--border);
+    display:flex; align-items:center; justify-content:center;
+    font-size:15px; font-weight:700; color:var(--text-dim);
+    transition:transform var(--dur-base) var(--ease-spring), color var(--dur-fast) ease, border-color var(--dur-fast) ease;
+  }
+  .faq-item.open .faq-icon{ transform:rotate(45deg); color:var(--coral); border-color:var(--coral); }
+  .faq-answer{ max-height:0; overflow:hidden; transition:max-height var(--dur-slow) var(--ease-in-out-soft); }
+  .faq-answer-inner{
+    padding:0 24px 22px; font-size:14.5px; line-height:1.6; color:var(--text-dim);
+    opacity:0; transform:translateY(-4px);
+    transition: opacity var(--dur-base) var(--ease-out-snap) var(--dur-fast), transform var(--dur-base) var(--ease-out-snap) var(--dur-fast);
+  }
+  .faq-item.open .faq-answer-inner{ opacity:1; transform:translateY(0); }
+
+  @media (max-width:860px){
+    .reviews-grid{ grid-template-columns:1fr; }
+    .stats-bar{ gap:36px; }
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{ animation-duration:0.01ms !important; transition-duration:0.01ms !important; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-inner">
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="url(#logoFlameGradient)" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <linearGradient id="logoFlameGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FF4D6D"/>
+              <stop offset="55%" stop-color="#FF7A5C"/>
+              <stop offset="100%" stop-color="#FFD84D"/>
+            </linearGradient>
+          </defs>
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+      VibeCheck
+    </a>
+    <div class="nav-actions" id="navActionsLoggedOut">
+      <a class="btn-connexion" href="historique.html">Historique</a>
+      <button class="btn-connexion" id="navLoginBtn" type="button">Connexion</button>
+      <button class="btn-commencer" id="navSignupBtn" type="button">Commencer</button>
+    </div>
+    <div class="nav-actions" id="navActionsLoggedIn" style="display:none;">
+      <span class="nav-user-greeting" id="navUserGreeting">👋</span>
+      <a class="btn-connexion" href="historique.html">Historique</a>
+      <button class="btn-connexion" id="navLogoutBtn" type="button">Déconnexion</button>
+    </div>
+  </div>
+</nav>
+
+<header class="hero">
+  <div class="wall-container" aria-hidden="true">
+    <div class="wall-col"><div class="wall-col-inner"></div></div>
+    <div class="wall-col reverse"><div class="wall-col-inner"></div></div>
+    <div class="wall-col"><div class="wall-col-inner"></div></div>
+    <div class="wall-col reverse"><div class="wall-col-inner"></div></div>
+  </div>
+  <div class="hero-overlay"></div>
+  <div class="activity-toast" id="activityToast">
+    <span class="activity-dot"></span>
+    <span id="activityText">Quelqu'un vient de checker son profil</span>
+  </div>
+
+  <div class="wrap hero-flex">
+    <div class="hero-left">
+      <div class="eyebrow"><span class="eyebrow-dot"></span> Généré en 8 secondes en moyenne</div>
+      <h1 class="display">On analyse ta <span class="accent">vibe</span>.<br>Sans <span class="accent2">filtre</span>.</h1>
+      <p class="hero-sub">Balance une capture de ton profil Insta, TikTok, Tinder ou ton profil préféré. VibeCheck note, roast et complimente en quelques secondes.</p>
+
+      <div class="panel upload-card" id="mainGrid">
+        <div class="upload-step">
+          <div class="upload-step-label"><span class="step-num">01</span> Ta capture <span class="step-required">Obligatoire</span></div>
+          <div class="drop" id="dropZone">
+            <div id="dropContent">
+              <div class="drop-icon">📸</div>
+              <div class="drop-title">Dépose ta capture d'écran ici</div>
+              <div class="drop-sub">ou clique pour parcourir — PNG, JPG jusqu'à 8 Mo</div>
+            </div>
+            <input type="file" id="fileInput" accept="image/*">
+          </div>
+        </div>
+
+        <div class="platform-row">
+          <span class="platform-chip">📱 Tinder</span>
+          <span class="platform-chip">📷 Instagram</span>
+          <span class="platform-chip">💼 LinkedIn</span>
+          <span class="platform-chip">🔥 Bumble</span>
+        </div>
+
+        <button class="roast-btn" id="roastBtn" disabled>
+          Checker ma vibe 🔥
+        </button>
+      </div>
+
+      <div class="loading-wrap" id="loadingWrap">
+        <div class="progress-ring-wrap">
+          <svg class="progress-ring" viewBox="0 0 120 120">
+            <defs>
+              <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#FF4D6D"/>
+                <stop offset="100%" stop-color="#FFD84D"/>
+              </linearGradient>
+            </defs>
+            <circle class="progress-ring-bg" cx="60" cy="60" r="52"></circle>
+            <circle class="progress-ring-bar" id="progressRingBar" cx="60" cy="60" r="52"></circle>
+          </svg>
+          <div class="progress-ring-percent" id="progressPercent">0%</div>
+        </div>
+        <div class="loading-text" id="loadingText">Analyse en cours...</div>
+        <div class="loading-sub">VibeCheck regarde vraiment tout, prépare-toi</div>
+      </div>
+
+      <div class="analysis-ready-wrap" id="analysisReadyWrap">
+        <div class="analysis-ready-icon">👀</div>
+        <div class="analysis-ready-title">Ton analyse est prête</div>
+        <div class="analysis-ready-sub">Score, verdict, roast & toast t'attendent.</div>
+        <button class="hero-cta-primary" id="viewAnalysisBtn" type="button">Voir mon analyse →</button>
+      </div>
+    </div>
+
+    <div class="hero-right">
+      <div class="demo-phone">
+        <div class="demo-device">
+          <div class="demo-notch"></div>
+          <div class="demo-screen">
+            <div class="demo-frame demo-frame-before">
+              <div class="demo-badge demo-badge-before">Ta capture</div>
+              <div class="demo-meta">1 profil → 1 analyse</div>
+              <div class="demo-mock-shot">📸</div>
+            </div>
+            <div class="demo-frame demo-frame-after">
+              <div class="demo-badge demo-badge-after">Avec VibeCheck</div>
+              <div class="demo-meta">1 profil → 1 analyse</div>
+              <div class="demo-score">7.8<span>/10</span></div>
+              <div class="demo-verdict">Chaotique mais attachant 💀</div>
+              <div class="demo-roast-line"></div>
+              <div class="demo-roast-line"></div>
+              <div class="demo-roast-line short"></div>
+            </div>
+          </div>
+        </div>
+        <div class="demo-float-badge"><span class="dot"></span> Rapport généré</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<section class="pitch-section" id="pitchSection">
+  <div class="wrap">
+    <h2 class="display pitch-title">Ton profil a une <span style="color:#FF4D6D;">vibe</span>.<br>On te dit <span style="color:#FFD84D;">laquelle</span>, Cash 💀</h2>
+    <p class="hero-sub pitch-sub">Balance tes screenshots de n'importe quels profils de réseaux sociaux. VibeCheck roast ta vibe avec humour, te note sur 10 et te sort une punchline à poster en story.</p>
+    <button class="hero-cta-primary" id="pitchCtaBtn" type="button">Checker ma vibe 🔥</button>
+  </div>
+</section>
+
+<section class="features-section">
+  <div class="features-eyebrow">✦ Ce que tu débloques</div>
+  <h2 class="display features-title">Une analyse complète, <span class="accent">zéro filtre</span></h2>
+
+  <div class="bento-grid">
+    <div class="bento-card bento-1">
+      <div class="bento-icon">🔥</div>
+      <div class="bento-title">Le Roast</div>
+      <div class="bento-desc">Des punchlines qui piquent. On analyse tes photos, ta bio et ton énergie sans langue de bois.</div>
+    </div>
+
+    <div class="bento-card bento-2">
+      <div class="bento-icon">🤍</div>
+      <div class="bento-title">Le Toast</div>
+      <div class="bento-desc">Parce qu'on n'est pas des monstres : On met aussi en avant les points positifs.</div>
+    </div>
+
+    <div class="bento-card bento-3">
+      <div class="bento-icon">📲</div>
+      <div class="bento-title">Story Ready</div>
+      <div class="bento-desc">Un export stylé 9:16 pour balancer ton score en story Insta, TikTok, Snap etc...</div>
+    </div>
+
+    <div class="bento-card bento-4">
+      <div class="bento-4-text">
+        <div class="bento-title">Prêt à checker ta vibe ?</div>
+      </div>
+      <button class="bento-4-btn" id="bentoCtaBtn" type="button">Checker ma vibe 🔥</button>
+    </div>
+  </div>
+</section>
+
+<section class="social-proof-section">
+  <div class="social-proof-inner">
+    <div class="stats-bar">
+      <div class="stat-block">
+        <div class="stat-number">87%</div>
+        <div class="stat-label">des users partagent leur résultat en story</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number">4.6/5</div>
+        <div class="stat-label">note moyenne donnée par nos utilisateurs</div>
+      </div>
+    </div>
+
+    <div class="reviews-eyebrow">★ Ils ont checké leur vibe</div>
+    <h2 class="display reviews-title">Ce que <span class="accent">les gens</span> en disent</h2>
+
+    <div class="reviews-grid">
+      <div class="review-card">
+        <div class="review-stars">
+          <span class="star full">★</span><span class="star full">★</span><span class="star full">★</span><span class="star full">★</span><span class="star half">★</span>
+        </div>
+        <div class="review-quote">"Le roast m'a clashé sur ma bio mais il avait raison. J'ai tout changé et mes matchs ont explosé."</div>
+        <div class="review-author">
+          <div class="review-avatar c1">L</div>
+          <div>
+            <div class="review-name">Léa M.</div>
+            <div class="review-platform">Profil Tinder</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-stars">
+          <span class="star full">★</span><span class="star full">★</span><span class="star full">★</span><span class="star half">★</span><span class="star">★</span>
+        </div>
+        <div class="review-quote">"Je m'attendais à un compliment gratuit, j'ai eu une vraie analyse. Ça pique mais ça aide clairement."</div>
+        <div class="review-author">
+          <div class="review-avatar c2">K</div>
+          <div>
+            <div class="review-name">Karim B.</div>
+            <div class="review-platform">Profil Instagram</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="review-card">
+        <div class="review-stars">
+          <span class="star full">★</span><span class="star full">★</span><span class="star full">★</span><span class="star full">★</span><span class="star">★</span>
+        </div>
+        <div class="review-quote">"Direct, drôle, et honnêtement utile pour retravailler mon profil LinkedIn avant ma recherche de job."</div>
+        <div class="review-author">
+          <div class="review-avatar c3">C</div>
+          <div>
+            <div class="review-name">Chloé D.</div>
+            <div class="review-platform">Profil LinkedIn</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="faq-section">
+  <div class="faq-inner">
+    <div class="faq-eyebrow">Une question ?</div>
+    <h2 class="display faq-title">Ce qu'il faut <span class="accent">savoir</span></h2>
+
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-question" type="button">
+          <span>Comment fonctionne l'analyse ?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Tu uploades une capture de ton profil, VibeCheck l'analyse en profondeur (photos, bio, présentation générale) et génère ton rapport en quelques secondes : un score, un roast, un toast et une punchline à partager.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" type="button">
+          <span>Mes captures d'écran sont-elles confidentielles ?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Oui. Tes captures sont utilisées uniquement pour générer ton analyse, jamais partagées ni revendues. Toi seul(e) as accès à ton historique, et tu peux le consulter à tout moment.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" type="button">
+          <span>Comment créer mon compte ?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Tu peux créer un compte soit avec Google, soit avec ton adresse email et un mot de passe. C'est simple, rapide, et tu accèdes directement à VibeCheck.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" type="button">
+          <span>Quels profils puis-je analyser ?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">N'importe lequel : Tinder, Instagram, TikTok, LinkedIn, Bumble... Tant que c'est une capture de profil, VibeCheck peut l'analyser.</div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-question" type="button">
+          <span>Puis-je partager mon résultat en story ?</span>
+          <span class="faq-icon">+</span>
+        </button>
+        <div class="faq-answer">
+          <div class="faq-answer-inner">Oui, chaque rapport peut être exporté en story prête à poster (format 9:16), directement utilisable sur Instagram, TikTok ou Snap.</div>
+        </div>
+      </div>
+
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="report-section" id="reportSection">
+  <div class="report-modal-close">
+    <button class="report-modal-close-btn" id="closeReportModal" type="button">✕</button>
+  </div>
+  <div class="wrap">
+    <div class="report-header">
+      <div class="report-title">Ton rapport est prêt 👀</div>
+      <div class="report-sub">Prêt à être posté. Ou à être caché à jamais. Toi seul décides.</div>
+    </div>
+
+    <div class="demo-banner" id="demoBanner" style="display:none;"></div>
+
+    <div class="report-body-wrap locked" id="reportBodyWrap">
+    <div class="report-layout">
+      <div>
+        <div class="story-card" id="storyCard">
+          <div class="story-brand"><span class="dot"></span> VIBECHECK</div>
+          <div class="story-score-wrap">
+            <div class="story-score" id="storyScoreNum">7.4</div>
+            <div class="story-score-sub">Vibe Score / 10</div>
+          </div>
+          <div class="story-verdict" id="storyVerdict">Le charmeur discret</div>
+          <div class="story-punch" id="storyPunch">Ta bio a plus de personnalité que tes photos. Inverse le combo.</div>
+          <div class="story-footer">VibeCheck — Check la tienne</div>
+        </div>
+
+        <div class="action-row" style="margin-top:20px;">
+          <button class="btn-share" id="shareBtn">📤 Partager en Story</button>
+          <button class="btn-retry" id="retryBtn">↺ Nouvelle analyse</button>
+        </div>
+        <div class="share-toast" id="shareToast">✓ Image exportée — prête pour Instagram Stories ou TikTok</div>
+      </div>
+
+      <div>
+        <div class="subscore-grid">
+          <div class="subscore-card">
+            <div class="subscore-label">Bio</div>
+            <div class="subscore-val" id="scoreBio">6.5</div>
+            <div class="subscore-bar-bg"><div class="subscore-bar" id="barBio" style="width:0%; background:var(--coral);"></div></div>
+          </div>
+          <div class="subscore-card">
+            <div class="subscore-label">Photos</div>
+            <div class="subscore-val" id="scorePhotos">8.0</div>
+            <div class="subscore-bar-bg"><div class="subscore-bar" id="barPhotos" style="width:0%; background:var(--yellow);"></div></div>
+          </div>
+          <div class="subscore-card">
+            <div class="subscore-label">Vibe globale</div>
+            <div class="subscore-val" id="scoreVibe">7.4</div>
+            <div class="subscore-bar-bg"><div class="subscore-bar" id="barVibe" style="width:0%; background:var(--mint);"></div></div>
+          </div>
+        </div>
+
+        <div class="roast-toast-grid">
+          <div class="rt-card roast">
+            <div class="rt-label">🔥 Le Roast</div>
+            <ul class="rt-list" id="roastList"></ul>
+          </div>
+          <div class="rt-card toast">
+            <div class="rt-label">🥂 Le Toast</div>
+            <ul class="rt-list" id="toastList"></ul>
+          </div>
+        </div>
+
+        <div class="panel premium-teaser-card" style="background:linear-gradient(135deg, rgba(255,216,77,0.08), var(--card)); border-color:rgba(255,216,77,0.25);" id="premiumUpsellCard">
+          <div style="font-weight:800; font-size:14.5px; margin-bottom:8px; color:var(--yellow);">💡 Débloque plus avec Premium</div>
+          <div style="font-size:13.5px; color:var(--text-dim); margin-bottom:14px;">Réécriture de bio + ordre optimal des photos, pour 2,99€.</div>
+          <button type="button" id="premiumUnlockBtn" style="font-size:13.5px; font-weight:700; color:var(--yellow); background:none; border:none; cursor:pointer; padding:0;">Accéder maintenant →</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="report-paywall" id="reportPaywall">
+      <div class="report-paywall-icon">🔒</div>
+      <div class="report-paywall-title">Débloque ton analyse</div>
+      <div class="report-paywall-sub">Score complet, roast, toast et export en story — tout est prêt, il ne manque que toi.</div>
+
+      <div class="paywall-pricing" id="paywallPricing">
+        <button class="paywall-tier" data-pack="single" type="button">
+          <div class="paywall-tier-name">1 analyse</div>
+          <div class="paywall-tier-price">4,99€</div>
+        </button>
+        <button class="paywall-tier paywall-tier-popular" data-pack="pack3" type="button">
+          <div class="paywall-tier-badge">POPULAIRE</div>
+          <div class="paywall-tier-name">Pack 3 analyses</div>
+          <div class="paywall-tier-price">9,99€</div>
+          <div class="paywall-tier-unit">soit 3,33€ / analyse</div>
+        </button>
+        <button class="paywall-tier paywall-tier-best" data-pack="pack10" type="button">
+          <div class="paywall-tier-badge">MEILLEURE OFFRE</div>
+          <div class="paywall-tier-name">Pack 10 analyses</div>
+          <div class="paywall-tier-price">15€</div>
+          <div class="paywall-tier-unit">soit 1,50€ / analyse</div>
+        </button>
+      </div>
+
+      <div class="paywall-loading" id="paywallLoading">Redirection vers le paiement...</div>
+    </div>
+    </div>
+  </div>
+</section>
+
+<section class="pricing-section" id="pricing">
+  <div class="wrap">
+    <div class="section-head">
+      <div class="section-eyebrow">Pricing</div>
+      <div class="section-title">Paye pour ce que tu utilises.<br>Rien de plus.</div>
+      <div class="section-desc">Pas d'abonnement caché, pas d'engagement piège. Des crédits quand tu en as besoin.</div>
+    </div>
+
+    <div class="pricing-note">Aucun abonnement mensuel ou hebdomadaire — les crédits n'expirent jamais.</div>
+
+    <div class="pricing-cta-section">
+      <button class="hero-cta-primary" id="footerCtaBtn" type="button">Checker ma vibe 🔥</button>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="footer-inner">
+    <div class="footer-col">
+      <div class="footer-col-title">Légal</div>
+      <a href="mentions-legales.html" class="footer-link">Mentions légales</a>
+      <a href="cgu-cgv.html" class="footer-link">CGU / CGV</a>
+      <a href="confidentialite.html" class="footer-link">Confidentialité</a>
+    </div>
+    <div class="footer-col">
+      <div class="footer-col-title">Contact</div>
+      <a href="mailto:vibecheck.contact.business@gmail.com" class="footer-link">vibecheck.contact.business@gmail.com</a>
+    </div>
+  </div>
+  <div class="footer-copyright">© 2026 VibeCheck. Tous droits réservés.</div>
+</footer>
+
+<div class="auth-view" id="viewSignup">
+  <div class="auth-topbar">
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="url(#logoFlameGradient)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+      VibeCheck
+    </a>
+    <button class="auth-close" id="closeSignup" type="button">✕</button>
+  </div>
+  <div class="auth-card">
+    <div class="auth-title">Crée ton compte</div>
+    <div class="auth-sub">Débloque tes analyses et garde ton historique de scores.</div>
+
+    <div class="google-btn-container" id="googleSignupBtn"></div>
+
+    <div class="auth-divider"><span>ou avec ton email</span></div>
+
+    <form class="auth-form" id="signupForm">
+      <input type="email" id="signupEmail" placeholder="Adresse email" autocomplete="email" required>
+      <input type="password" id="signupPassword" placeholder="Mot de passe" autocomplete="new-password" minlength="8" required>
+      <div class="auth-error" id="signupError"></div>
+      <button type="submit" class="auth-submit"><span class="btn-label">Créer mon compte</span><span class="btn-spin"></span></button>
+    </form>
+
+    <div class="auth-switch">Déjà un compte ? <a href="#login" id="switchToLogin">Connexion</a></div>
+  </div>
+</div>
+
+<div class="auth-view" id="viewLogin">
+  <div class="auth-topbar">
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="url(#logoFlameGradient)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+      VibeCheck
+    </a>
+    <button class="auth-close" id="closeLogin" type="button">✕</button>
+  </div>
+  <div class="auth-card">
+    <div class="auth-title">Connexion</div>
+    <div class="auth-sub">Contente de te revoir. Retrouve tes analyses et ton historique.</div>
+
+    <div class="google-btn-container" id="googleLoginBtn"></div>
+
+    <div class="auth-divider"><span>ou avec ton email</span></div>
+
+    <form class="auth-form" id="loginForm">
+      <input type="email" id="loginEmail" placeholder="Adresse email" autocomplete="email" required>
+      <input type="password" id="loginPassword" placeholder="Mot de passe" autocomplete="current-password" required>
+      <div class="auth-forgot"><a href="#" id="forgotPasswordLink">Mot de passe oublié ?</a></div>
+      <div class="auth-error" id="loginError"></div>
+      <button type="submit" class="auth-submit"><span class="btn-label">Se connecter</span><span class="btn-spin"></span></button>
+    </form>
+
+    <div class="auth-switch">Pas encore de compte ? <a href="#signup" id="switchToSignup">Commencer</a></div>
+  </div>
+</div>
+
+<div class="auth-view" id="viewForgot">
+  <div class="auth-topbar">
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="url(#logoFlameGradient)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+      VibeCheck
+    </a>
+    <button class="auth-close" id="closeForgot" type="button">✕</button>
+  </div>
+  <div class="auth-card">
+    <div class="auth-title">Mot de passe oublié</div>
+    <div class="auth-sub">Entre ton email, on t'envoie un lien pour le réinitialiser.</div>
+
+    <form class="auth-form" id="forgotForm">
+      <input type="email" id="forgotEmail" placeholder="Adresse email" autocomplete="email" required>
+      <div class="auth-error" id="forgotError"></div>
+      <div class="auth-success" id="forgotSuccess"></div>
+      <button type="submit" class="auth-submit" id="forgotSubmitBtn"><span class="btn-label">Envoyer le lien</span><span class="btn-spin"></span></button>
+    </form>
+
+    <div class="auth-switch">Tu te souviens ? <a href="#login" id="backToLoginFromForgot">Retour à la connexion</a></div>
+  </div>
+</div>
+
+<div class="auth-view" id="viewNewPassword">
+  <div class="auth-topbar">
+    <a class="logo" href="index.html">
+      <div class="logo-mark">
+        <svg viewBox="0 0 24 24" fill="url(#logoFlameGradient)" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+        </svg>
+      </div>
+      VibeCheck
+    </a>
+  </div>
+  <div class="auth-card">
+    <div class="auth-title">Nouveau mot de passe</div>
+    <div class="auth-sub">Choisis un nouveau mot de passe pour ton compte.</div>
+
+    <form class="auth-form" id="newPasswordForm">
+      <input type="password" id="newPassword" placeholder="Nouveau mot de passe (8 caractères min.)" autocomplete="new-password" required>
+      <input type="password" id="newPasswordConfirm" placeholder="Confirme le mot de passe" autocomplete="new-password" required>
+      <div class="auth-error" id="newPasswordError"></div>
+      <button type="submit" class="auth-submit" id="newPasswordSubmitBtn"><span class="btn-label">Valider le nouveau mot de passe</span><span class="btn-spin"></span></button>
+    </form>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script>
+(function(){
+  const dropZone = document.getElementById('dropZone');
+  const fileInput = document.getElementById('fileInput');
+  const dropContent = document.getElementById('dropContent');
+  const roastBtn = document.getElementById('roastBtn');
+  const loadingWrap = document.getElementById('loadingWrap');
+  const loadingText = document.getElementById('loadingText');
+  const mainGrid = document.getElementById('mainGrid');
+  const analysisReadyWrap = document.getElementById('analysisReadyWrap');
+  const viewAnalysisBtn = document.getElementById('viewAnalysisBtn');
+  const reportSection = document.getElementById('reportSection');
+  const reportBodyWrap = document.getElementById('reportBodyWrap');
+  const paywallLoading = document.getElementById('paywallLoading');
+  const shareBtn = document.getElementById('shareBtn');
+  const retryBtn = document.getElementById('retryBtn');
+  const shareToast = document.getElementById('shareToast');
+  const storyCard = document.getElementById('storyCard');
+  const demoBanner = document.getElementById('demoBanner');
+  let uploadedImageBase64 = null;
+  let uploadedMediaType = null;
+  let pendingBarWidths = null;
+
+  // ---------- Analyse "en attente" : permet de lancer l'upload avant la connexion.
+  // Survit à la popup de connexion ET à la confirmation email (redirection sur une page fraîche). ----------
+  const PENDING_ANALYSIS_KEY = 'vibecheck_pending_analysis';
+  function savePendingAnalysis(){
+    if (!uploadedImageBase64) return;
+    try {
+      localStorage.setItem(PENDING_ANALYSIS_KEY, JSON.stringify({
+        image: uploadedImageBase64,
+        mediaType: uploadedMediaType
+      }));
+    } catch(e) { console.error('Impossible de sauvegarder l\'analyse en attente:', e); }
+  }
+  function getPendingAnalysis(){
+    try { return JSON.parse(localStorage.getItem(PENDING_ANALYSIS_KEY) || 'null'); } catch(e) { return null; }
+  }
+  function clearPendingAnalysis(){
+    try { localStorage.removeItem(PENDING_ANALYSIS_KEY); } catch(e) {}
+  }
+
+  // ---------- AUTH : gestion de la session locale (miroir de la session Supabase) ----------
+  const SESSION_KEY = 'vibecheck_session';
+
+  function getSession(){
+    try { return JSON.parse(localStorage.getItem(SESSION_KEY) || 'null'); } catch(e){ return null; }
+  }
+  function setSession(user){
+    try { localStorage.setItem(SESSION_KEY, JSON.stringify(user)); } catch(e){}
+    refreshAuthUI();
+  }
+  function clearSession(){
+    try { localStorage.removeItem(SESSION_KEY); } catch(e){}
+    refreshAuthUI();
+  }
+
+  const navActionsLoggedOut = document.getElementById('navActionsLoggedOut');
+  const navActionsLoggedIn = document.getElementById('navActionsLoggedIn');
+  const navUserGreeting = document.getElementById('navUserGreeting');
+  const navLoginBtn = document.getElementById('navLoginBtn');
+  const navSignupBtn = document.getElementById('navSignupBtn');
+  const navLogoutBtn = document.getElementById('navLogoutBtn');
+
+  function refreshAuthUI(){
+    const session = getSession();
+    if (session) {
+      navActionsLoggedOut.style.display = 'none';
+      navActionsLoggedIn.style.display = 'flex';
+      const displayName = session.name || (session.email ? session.email.split('@')[0] : 'toi');
+      navUserGreeting.textContent = '👋 ' + displayName;
+    } else {
+      navActionsLoggedOut.style.display = 'flex';
+      navActionsLoggedIn.style.display = 'none';
+    }
+  }
+
+  // ---------- AUTH : routing par hash (#signup / #login) ----------
+  const viewSignup = document.getElementById('viewSignup');
+  const viewLogin = document.getElementById('viewLogin');
+
+  function showAuthView(view){
+    viewSignup.classList.toggle('active', view === 'signup');
+    viewLogin.classList.toggle('active', view === 'login');
+    document.getElementById('viewForgot').classList.toggle('active', view === 'forgot');
+    if (view) window.scrollTo(0, 0);
+  }
+  function navigateTo(view){
+    location.hash = view || '';
+  }
+  window.addEventListener('hashchange', () => {
+    const hash = location.hash.replace('#', '');
+    showAuthView(hash === 'signup' || hash === 'login' || hash === 'forgot' ? hash : '');
+  });
+
+  navSignupBtn.addEventListener('click', () => navigateTo('signup'));
+  navLoginBtn.addEventListener('click', () => navigateTo('login'));
+  navLogoutBtn.addEventListener('click', async () => {
+    if (supabaseClient) {
+      try { await supabaseClient.auth.signOut(); } catch(e) { console.error('Supabase signOut error:', e); }
+    }
+    clearSession();
+  });
+
+  function goToAppOrSignup(){
+    const target = document.getElementById('mainGrid');
+    if (target) target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  const pitchCtaBtn = document.getElementById('pitchCtaBtn');
+  if (pitchCtaBtn) pitchCtaBtn.addEventListener('click', goToAppOrSignup);
+  const bentoCtaBtn = document.getElementById('bentoCtaBtn');
+  if (bentoCtaBtn) bentoCtaBtn.addEventListener('click', goToAppOrSignup);
+  const footerCtaBtn = document.getElementById('footerCtaBtn');
+  if (footerCtaBtn) footerCtaBtn.addEventListener('click', goToAppOrSignup);
+
+  document.getElementById('closeSignup').addEventListener('click', () => navigateTo(''));
+  document.getElementById('closeLogin').addEventListener('click', () => navigateTo(''));
+  document.getElementById('switchToLogin').addEventListener('click', (e) => { e.preventDefault(); navigateTo('login'); });
+  document.getElementById('switchToSignup').addEventListener('click', (e) => { e.preventDefault(); navigateTo('signup'); });
+  document.getElementById('forgotPasswordLink').addEventListener('click', (e) => {
+    e.preventDefault();
+    navigateTo('forgot');
+  });
+  document.getElementById('closeForgot').addEventListener('click', () => navigateTo(''));
+  document.getElementById('backToLoginFromForgot').addEventListener('click', (e) => { e.preventDefault(); navigateTo('login'); });
+
+  document.getElementById('forgotForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('forgotEmail').value.trim();
+    const errorEl = document.getElementById('forgotError');
+    const successEl = document.getElementById('forgotSuccess');
+    const submitBtn = document.getElementById('forgotSubmitBtn');
+
+    errorEl.classList.remove('show');
+    successEl.classList.remove('show');
+
+    if (!email) {
+      errorEl.textContent = 'Entre ton adresse email.';
+      errorEl.classList.add('show');
+      return;
+    }
+    if (!supabaseClient) {
+      errorEl.textContent = "Le service de connexion n'a pas pu charger, réessaie dans un instant.";
+      errorEl.classList.add('show');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
+    const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('loading');
+
+    if (error) {
+      errorEl.textContent = translateSupabaseError(error.message);
+      errorEl.classList.add('show');
+      return;
+    }
+    successEl.textContent = "Email envoyé ! Vérifie ta boîte mail (et tes spams) pour réinitialiser ton mot de passe.";
+    successEl.classList.add('show');
+  });
+
+  document.getElementById('newPasswordForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const password = document.getElementById('newPassword').value;
+    const confirm = document.getElementById('newPasswordConfirm').value;
+    const errorEl = document.getElementById('newPasswordError');
+    const submitBtn = document.getElementById('newPasswordSubmitBtn');
+
+    errorEl.classList.remove('show');
+
+    if (password.length < 8) {
+      errorEl.textContent = 'Le mot de passe doit contenir au moins 8 caractères.';
+      errorEl.classList.add('show');
+      return;
+    }
+    if (password !== confirm) {
+      errorEl.textContent = 'Les deux mots de passe ne correspondent pas.';
+      errorEl.classList.add('show');
+      return;
+    }
+    if (!supabaseClient) {
+      errorEl.textContent = "Le service de connexion n'a pas pu charger, réessaie dans un instant.";
+      errorEl.classList.add('show');
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.classList.add('loading');
+    const { error } = await supabaseClient.auth.updateUser({ password });
+    submitBtn.disabled = false;
+    submitBtn.classList.remove('loading');
+
+    if (error) {
+      errorEl.textContent = translateSupabaseError(error.message);
+      errorEl.classList.add('show');
+      return;
+    }
+    // Mot de passe mis à jour : l'utilisateur a déjà une session active (recovery), on le redirige vers l'app.
+    document.getElementById('viewNewPassword').classList.remove('active');
+    navigateTo('');
+    setTimeout(() => {
+      const mainGrid = document.getElementById('mainGrid');
+      if (mainGrid) mainGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+  });
+
+  // ---------- AUTH : formulaires email / mot de passe ----------
+  document.getElementById('signupForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('signupEmail').value.trim();
+    const password = document.getElementById('signupPassword').value;
+    const errorEl = document.getElementById('signupError');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    if (!email || password.length < 8) {
+      errorEl.textContent = 'Remplis tous les champs (mot de passe : 8 caractères minimum).';
+      errorEl.classList.add('show');
+      return;
+    }
+    errorEl.classList.remove('show');
+
+    if (!supabaseClient) {
+      errorEl.textContent = "Le service de connexion n'a pas pu charger, réessaie dans un instant.";
+      errorEl.classList.add('show');
+      return;
+    }
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('loading'); }
+    const { data, error } = await supabaseClient.auth.signUp({ email, password });
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('loading'); }
+
+    if (error) {
+      errorEl.textContent = translateSupabaseError(error.message);
+      errorEl.classList.add('show');
+      return;
+    }
+
+    if (data && data.session) {
+      // Session créée immédiatement : onAuthStateChange (SIGNED_IN) gère la suite automatiquement.
+    } else {
+      // Confirmation email requise avant de pouvoir se connecter (réglage par défaut de Supabase).
+      alert("Compte créé ! Vérifie ta boîte mail pour confirmer ton adresse avant de te connecter.");
+      navigateTo('login');
+    }
+  });
+
+  document.getElementById('loginForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value.trim();
+    const password = document.getElementById('loginPassword').value;
+    const errorEl = document.getElementById('loginError');
+    const submitBtn = e.target.querySelector('button[type="submit"]');
+
+    if (!email || !password) {
+      errorEl.textContent = 'Entre ton email et ton mot de passe.';
+      errorEl.classList.add('show');
+      return;
+    }
+    errorEl.classList.remove('show');
+
+    if (!supabaseClient) {
+      errorEl.textContent = "Le service de connexion n'a pas pu charger, réessaie dans un instant.";
+      errorEl.classList.add('show');
+      return;
+    }
+
+    if (submitBtn) { submitBtn.disabled = true; submitBtn.classList.add('loading'); }
+    const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+    if (submitBtn) { submitBtn.disabled = false; submitBtn.classList.remove('loading'); }
+
+    if (error) {
+      errorEl.textContent = translateSupabaseError(error.message);
+      errorEl.classList.add('show');
+      return;
+    }
+    // Succès : onAuthStateChange (SIGNED_IN) gère setSession/navigateTo/scroll automatiquement.
+  });
+
+  // ---------- AUTH : connexion Google via Supabase Auth ----------
+  // Secousse automatique du formulaire dès qu'un message d'erreur auth s'affiche
+  // (peu importe lequel des 4 formulaires) — un seul point d'écoute, on ne touche
+  // à aucun des appels existants qui affichent ces erreurs.
+  document.querySelectorAll('.auth-form .auth-error').forEach(errorEl => {
+    const observer = new MutationObserver(() => {
+      if (errorEl.classList.contains('show')) {
+        const form = errorEl.closest('form');
+        if (form) {
+          form.classList.remove('shake');
+          void form.offsetWidth;
+          form.classList.add('shake');
+        }
+      }
+    });
+    observer.observe(errorEl, { attributes: true, attributeFilter: ['class'] });
+  });
+
+  const SUPABASE_URL = 'https://teqcsguiphdptdgtpdvi.supabase.co';
+  const SUPABASE_ANON_KEY = 'sb_publishable_iCB1zifgp9hOPky-UD3-sQ_6VuWJdTK';
+  const supabaseClient = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+
+  // Traduit les messages d'erreur Supabase les plus courants en français compréhensible
+  function translateSupabaseError(message){
+    if (!message) return "Une erreur est survenue, réessaie.";
+    const msg = message.toLowerCase();
+    if (msg.includes('already registered') || msg.includes('already exists')) {
+      return "Un compte existe déjà avec cet email. Connecte-toi plutôt.";
+    }
+    if (msg.includes('invalid login credentials')) {
+      return "Email ou mot de passe incorrect.";
+    }
+    if (msg.includes('email not confirmed')) {
+      return "Confirme ton adresse email avant de te connecter (vérifie ta boîte mail).";
+    }
+    if (msg.includes('password') && msg.includes('least')) {
+      return "Le mot de passe doit contenir au moins 8 caractères.";
+    }
+    if (msg.includes('unable to validate email') || msg.includes('invalid email')) {
+      return "Adresse email invalide.";
+    }
+    return "Une erreur est survenue : " + message;
+  }
+
+  function buildGoogleButtonHTML(){
+    return '<button type="button" class="google-btn-fake">'
+      + '<svg width="18" height="18" viewBox="0 0 18 18"><path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.92c1.7-1.57 2.68-3.88 2.68-6.62z"/><path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.92-2.26c-.81.54-1.85.86-3.04.86-2.34 0-4.32-1.58-5.03-3.7H.96v2.33A9 9 0 0 0 9 18z"/><path fill="#FBBC05" d="M3.97 10.72A5.4 5.4 0 0 1 3.69 9c0-.6.1-1.18.28-1.72V4.95H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.05l3.01-2.33z"/><path fill="#EA4335" d="M9 3.58c1.32 0 2.5.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.95l3.01 2.33C4.68 5.16 6.66 3.58 9 3.58z"/></svg>'
+      + '<span>Continuer avec Google</span>'
+      + '</button>';
+  }
+
+  async function handleGoogleSignIn(){
+    if (!supabaseClient) {
+      alert("Le SDK Supabase n'a pas pu charger (vérifie ta connexion internet), réessaie.");
+      return;
+    }
+    const { error } = await supabaseClient.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) {
+      console.error('Supabase OAuth error:', error);
+      alert("La connexion Google a échoué : " + error.message);
+    }
+    // En cas de succès, Supabase redirige automatiquement vers Google puis revient sur le site.
+  }
+
+  function initGoogleButtons(){
+    const signupContainer = document.getElementById('googleSignupBtn');
+    const loginContainer = document.getElementById('googleLoginBtn');
+    const containers = [signupContainer, loginContainer];
+
+    containers.forEach(container => {
+      if (container) container.innerHTML = buildGoogleButtonHTML();
+    });
+    document.querySelectorAll('.google-btn-fake').forEach(btn => {
+      btn.addEventListener('click', handleGoogleSignIn);
+    });
+  }
+
+  // Au chargement de la page (et après retour de redirection Google), on vérifie s'il existe
+  // une session Supabase active, et on synchronise la session locale utilisée par l'UI.
+  // Si une analyse était en attente (upload fait avant la connexion), on la relance
+  // automatiquement : restaure l'image, redirige vers la page de chargement, lance l'analyse.
+  function resumePendingAnalysisIfAny(){
+    const pending = getPendingAnalysis();
+    if (!pending || !pending.image) return;
+    clearPendingAnalysis();
+    uploadedImageBase64 = pending.image;
+    uploadedMediaType = pending.mediaType;
+    if (dropContent && pending.mediaType) {
+      const dataUrl = 'data:' + pending.mediaType + ';base64,' + pending.image;
+      dropContent.innerHTML = `<img src="${dataUrl}" class="preview-img" alt="Capture importée"><div class="drop-title">Capture importée ✓</div><div class="drop-sub">Clique pour en choisir une autre</div>`;
+    }
+    if (roastBtn) roastBtn.disabled = false;
+    navigateTo('');
+    setTimeout(() => {
+      runAnalysis();
+      if (loadingWrap) loadingWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 150);
+  }
+
+  async function syncSupabaseSession(){
+    if (!supabaseClient) return;
+    const { data, error } = await supabaseClient.auth.getSession();
+    if (error) {
+      console.error('Supabase getSession error:', error);
+      return;
+    }
+    const supaSession = data && data.session;
+    if (supaSession && supaSession.user) {
+      const user = supaSession.user;
+      const provider = (user.app_metadata && user.app_metadata.provider) || 'email';
+      const displayName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name))
+        || (user.email ? user.email.split('@')[0] : 'Utilisateur');
+      setSession({ name: displayName, email: user.email, provider });
+      resumePendingAnalysisIfAny();
+    }
+  }
+
+  if (supabaseClient) {
+    supabaseClient.auth.onAuthStateChange((event, supaSession) => {
+      if (event === 'SIGNED_IN' && supaSession && supaSession.user) {
+        const user = supaSession.user;
+        const provider = (user.app_metadata && user.app_metadata.provider) || 'email';
+        const displayName = (user.user_metadata && (user.user_metadata.full_name || user.user_metadata.name))
+          || (user.email ? user.email.split('@')[0] : 'Utilisateur');
+        setSession({ name: displayName, email: user.email, provider });
+        if (getPendingAnalysis()) {
+          resumePendingAnalysisIfAny();
+        } else {
+          navigateTo('');
+          setTimeout(() => {
+            const mainGrid = document.getElementById('mainGrid');
+            if (mainGrid) mainGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 100);
+        }
+      } else if (event === 'SIGNED_OUT') {
+        clearSession();
+      } else if (event === 'PASSWORD_RECOVERY') {
+        viewSignup.classList.remove('active');
+        viewLogin.classList.remove('active');
+        document.getElementById('viewForgot').classList.remove('active');
+        document.getElementById('viewNewPassword').classList.add('active');
+        window.scrollTo(0, 0);
+      }
+    });
+  }
+
+  // ---------- MUR D'APERÇUS : exemples de résultats ----------
+  const WALL_EXAMPLES = [
+    { score: '8.2', verdict: 'LE CHARMEUR ASSUMÉ', roast: 'La dernière photo en salle de sport, on a compris merci.' },
+    { score: '5.9', verdict: 'LE PROFIL SANS RISQUE', roast: 'La bio se résume à une liste de hobbies, sans histoire.' },
+    { score: '9.1', verdict: 'LA RÉFÉRENCE ABSOLUE', roast: 'Franchement, on cherche encore le défaut ici.' },
+    { score: '4.3', verdict: 'LE MYSTÈRE NON RÉSOLU', roast: 'Trois photos, zéro info sur qui tu es vraiment.' },
+    { score: '7.6', verdict: 'LA BIO QUI SAUVE TOUT', roast: 'Tes mots rattrapent ce que les photos n\'osent pas faire.' },
+    { score: '6.4', verdict: 'L\'ÉNIGME SYMPATHIQUE', roast: 'Photo de groupe en premier, on doit deviner lequel t\'es.' },
+    { score: '8.8', verdict: 'LE COUP DE CŒUR', roast: 'Ce sourire sur la deuxième photo, franchement bien joué.' },
+    { score: '5.1', verdict: 'LE COPIER-COLLER', roast: 'Cette bio, on l\'a déjà lue cent fois ce mois-ci.' },
+    { score: '7.0', verdict: 'LE SOLIDE SANS SURPRISE', roast: 'Rien ne cloche ici, mais rien n\'accroche non plus.' },
+    { score: '9.4', verdict: 'LE PHÉNOMÈNE', roast: 'On tient un sérieux candidat pour le podium du mois.' }
+  ];
+
+  function buildWallColumnHTML(examples){
+    return examples.map(ex =>
+      '<div class="wall-card">'
+      + '<div class="wall-card-score">' + ex.score + '<span>/10</span></div>'
+      + '<div class="wall-card-verdict">' + ex.verdict + '</div>'
+      + '<div class="wall-card-roast">' + ex.roast + '</div>'
+      + '</div>'
+    ).join('');
+  }
+
+  function initPreviewWall(){
+    const cols = document.querySelectorAll('.wall-col-inner');
+    cols.forEach((col, i) => {
+      const offset = i * 3;
+      const shifted = WALL_EXAMPLES.slice(offset).concat(WALL_EXAMPLES.slice(0, offset));
+      const html = buildWallColumnHTML(shifted);
+      col.innerHTML = html + html;
+    });
+  }
+
+  // ---------- TOAST D'ACTIVITÉ ----------
+  const ACTIVITY_MESSAGES = [
+    'Quelqu\'un vient de checker son profil Tinder',
+    'Une analyse Instagram vient d\'être générée',
+    'Un profil LinkedIn vient d\'être noté',
+    'Quelqu\'un a partagé son score en story',
+    'Une bio vient d\'obtenir un 8.5/10'
+  ];
+  let activityIndex = 0;
+  function cycleActivityToast(){
+    const el = document.getElementById('activityText');
+    if (el) el.textContent = ACTIVITY_MESSAGES[activityIndex % ACTIVITY_MESSAGES.length];
+    activityIndex++;
+  }
+
+  const loadingMessages = [
+    "Analyse en cours...",
+    "VibeCheck juge tes photos...",
+    "Décryptage de ta bio...",
+    "Calcul du vibe score...",
+    "Rédaction du roast..."
+  ];
+  let loadingInterval = null;
+
+  function setupDropZone(){
+    dropZone.addEventListener('click', () => fileInput.click());
+
+    ['dragover','dragenter'].forEach(evt => {
+      dropZone.addEventListener(evt, e => {
+        e.preventDefault();
+        dropZone.classList.add('drag');
+      });
+    });
+    ['dragleave','drop'].forEach(evt => {
+      dropZone.addEventListener(evt, e => {
+        e.preventDefault();
+        dropZone.classList.remove('drag');
+      });
+    });
+    dropZone.addEventListener('drop', e => {
+      const file = e.dataTransfer.files[0];
+      if (file) handleFile(file);
+    });
+    fileInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (file) handleFile(file);
+    });
+  }
+
+  function handleFile(file){
+    if (!file.type.startsWith('image/')) {
+      alert('Veuillez sélectionner une image (PNG, JPG, etc.)');
+      return;
+    }
+    uploadedMediaType = file.type;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const result = e.target.result;
+      uploadedImageBase64 = result.split(',')[1];
+      dropContent.innerHTML = `<img src="${result}" class="preview-img" alt="Capture importée"><div class="drop-title">Capture importée ✓</div><div class="drop-sub">Clique pour en choisir une autre</div>`;
+      roastBtn.disabled = false;
+    };
+    reader.onerror = () => {
+      alert('Erreur lors de la lecture du fichier');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  // ---------- Cercle de progression réaliste : avance jusqu'à ~92% en attendant
+  // la vraie réponse, puis saute à 100% seulement quand l'analyse est vraiment prête. ----------
+  const progressRingBar = document.getElementById('progressRingBar');
+  const progressPercentEl = document.getElementById('progressPercent');
+  const RING_CIRCUMFERENCE = 2 * Math.PI * 52;
+  let progressInterval = null;
+  let currentProgress = 0;
+
+  function setProgressDisplay(percent){
+    currentProgress = percent;
+    if (progressRingBar) {
+      progressRingBar.style.strokeDashoffset = RING_CIRCUMFERENCE * (1 - percent / 100);
+    }
+    if (progressPercentEl) {
+      progressPercentEl.textContent = Math.round(percent) + '%';
+    }
+  }
+
+  function startProgressAnimation(){
+    setProgressDisplay(0);
+    progressInterval = setInterval(() => {
+      const remaining = 92 - currentProgress;
+      if (remaining <= 0.5) return;
+      const step = Math.max(0.4, remaining * (0.10 + Math.random() * 0.10));
+      setProgressDisplay(Math.min(92, currentProgress + step));
+    }, 220);
+  }
+
+  function stopProgressAnimation(){
+    if (progressInterval) clearInterval(progressInterval);
+  }
+
+  function completeProgressAnimation(){
+    stopProgressAnimation();
+    setProgressDisplay(100);
+  }
+
+  function startLoadingMessages(){
+    let idx = 0;
+    loadingText.textContent = loadingMessages[0];
+    loadingInterval = setInterval(() => {
+      idx = (idx + 1) % loadingMessages.length;
+      loadingText.textContent = loadingMessages[idx];
+    }, 1400);
+  }
+
+  function stopLoadingMessages(){
+    if (loadingInterval) clearInterval(loadingInterval);
+  }
+
+  const SYSTEM_PROMPT = `Tu es VibeCheck AI, un générateur de rapport "Roast & Toast" pour des captures d'écran de profils (Tinder, Instagram, LinkedIn, Bumble). Ton ton est mordant, drôle, façon "ami cash qui te dit la vérité" — jamais méchant gratuitement, jamais discriminatoire (pas de jugement sur physique, origine, poids, genre, orientation, handicap etc), le roast porte uniquement sur les choix de présentation (bio, mise en scène des photos, choix de mots, vibe générale dégagée).
+
+Si le profil est vide, peu rempli, ou si l'image n'est pas un profil identifiable, note quand même sur la base de ce qui est visible (ex: absence de bio, absence de photo de contenu, choix de pseudo, photo de profil) — le roast peut alors porter précisément sur le fait que le profil est vide ou minimaliste, ça reste un bon roast. Ne refuse jamais de répondre et ne mets aucun avertissement ou explication.
+
+Réponds UNIQUEMENT en JSON valide, rien d'autre : pas de phrase avant, pas de phrase après, pas de balises markdown, pas d'excuse. Le tout premier caractère de ta réponse doit être { et le dernier doit être }. Structure exacte attendue :
+{
+  "vibe_score": <nombre entre 1 et 10, une décimale>,
+  "score_bio": <nombre entre 1 et 10, une décimale>,
+  "score_photos": <nombre entre 1 et 10, une décimale>,
+  "verdict": "<un titre punchy de 2-4 mots qui résume la vibe, ex: 'Le charmeur discret'>",
+  "punchline": "<une phrase choc de max 20 mots pour le partage en story>",
+  "roast": ["<critique drôle 1>", "<critique drôle 2>", "<critique drôle 3>"],
+  "toast": ["<compliment sincère 1>", "<compliment sincère 2>", "<compliment sincère 3>"]
+}`;
+
+  const DEMO_REPORTS = [
+    {
+      vibe_score: 6.8, score_bio: 6.0, score_photos: 7.5,
+      verdict: "L'énigme sympathique",
+      punchline: "On sent du potentiel, mais ta bio joue la sécurité à fond.",
+      roast: ["Ta bio pourrait être celle de 80% des profils de la ville.", "Photo de groupe en premier — on doit deviner lequel t'es.", "Zéro trace d'humour, alors qu'on sent que t'en as sous le coude."],
+      toast: ["Le sourire sur la 2e photo est ultra naturel.", "Bonne diversité de contextes dans les photos.", "Le profil respire la simplicité, pas mal du tout."]
+    },
+    {
+      vibe_score: 8.1, score_bio: 7.8, score_photos: 8.4,
+      verdict: "Le charmeur assumé",
+      punchline: "Tu sais clairement ce que tu fais, et ça se voit à chaque photo.",
+      roast: ["La dernière photo en salle de sport, on a compris, merci.", "Ta bio essaie un peu trop fort d'être drôle sur la fin.", "Un peu trop de filtre sur la photo 3, on veut voir le vrai toi."],
+      toast: ["Belle progression du sérieux vers le fun entre les photos.", "La bio donne vraiment envie d'en savoir plus.", "Bon équilibre entre confiance et accessibilité."]
+    },
+    {
+      vibe_score: 5.4, score_bio: 4.9, score_photos: 6.0,
+      verdict: "Le profil sans risque",
+      punchline: "Rien ne cloche, mais rien n'accroche non plus.",
+      roast: ["La bio se résume à une liste de hobbies, sans aucune histoire.", "Toutes les photos ont la même expression, le même angle.", "On ne sait toujours pas qui tu es après avoir tout vu."],
+      toast: ["Photos nettes et bien cadrées, au moins techniquement.", "Rien de gênant, c'est un bon socle de départ.", "Le ton reste cohérent du début à la fin."]
+    },
+    {
+      vibe_score: 7.6, score_bio: 8.2, score_photos: 7.0,
+      verdict: "La bio qui sauve tout",
+      punchline: "Tes mots font le travail que tes photos n'osent pas faire.",
+      roast: ["La photo de profil est floue, premier réflexe : la changer.", "On sent une hésitation dans le choix des tenues d'une photo à l'autre.", "Le dernier cliché n'ajoute rien de nouveau aux trois premiers."],
+      toast: ["La bio a un vrai rythme, on veut lire la suite.", "Une punchline qui donne vraiment envie de répondre.", "Le ton général dégage une bonne confiance en soi."]
+    }
+  ];
+  let demoIndex = 0;
+  function getDemoReport(){
+    const report = DEMO_REPORTS[demoIndex % DEMO_REPORTS.length];
+    demoIndex++;
+    return report;
+  }
+
+  async function runAnalysis(){
+    if (!uploadedImageBase64) {
+      alert('Sélectionne d\'abord une image avant de lancer l\'analyse.');
+      return;
+    }
+
+    // L'analyse consomme désormais un crédit réel côté serveur : il faut
+    // être connecté avant même de tenter l'appel.
+    const session = getSession();
+    if (!session) {
+      navigateTo('signup');
+      return;
+    }
+    const token = await getSupabaseAccessToken();
+    if (!token) {
+      navigateTo('login');
+      return;
+    }
+
+    roastBtn.disabled = true;
+    mainGrid.style.opacity = '0.4';
+    loadingWrap.classList.add('active');
+    startLoadingMessages();
+    startProgressAnimation();
+
+    let result = null;
+    let errorMessage = null;
+    let noCreditsLeft = false;
+
+    try {
+      // Appel à notre fonction serverless /api/analyze-profile — le crédit
+      // est débité atomiquement côté serveur avant l'appel à GPT-4 Vision.
+      const response = await fetch('/api/analyze-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          imageBase64: uploadedImageBase64,
+          mediaType: uploadedMediaType,
+        }),
+      });
+
+      if (response.status === 402) {
+        // Pas de crédits : ce n'est pas une panne technique, pas de mode démo ici —
+        // on arrête tout de suite et on redirige vers l'achat de crédits.
+        noCreditsLeft = true;
+        throw new Error('Crédits insuffisants');
+      }
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Erreur ${response.status}`);
+      }
+
+      result = await response.json();
+
+      // Valider la structure de la réponse
+      const requiredFields = ['vibe_score', 'score_bio', 'score_photos', 'verdict', 'punchline', 'roast', 'toast'];
+      const missing = requiredFields.filter(f => !(f in result));
+      if (missing.length) {
+        console.error('Champs manquants dans la réponse :', missing, result);
+        throw new Error('Réponse incomplète (champs manquants : ' + missing.join(', ') + ')');
+      }
+
+    } catch (err) {
+      console.error('Analysis error:', err);
+      errorMessage = err.message || 'Erreur inconnue';
+      if (!noCreditsLeft) {
+        // Panne technique (API IA down, etc.) : on utilise un rapport démo pour
+        // que l'utilisateur voie quand même le flow, sans lui faire perdre de crédit
+        // (le crédit n'est débité qu'en cas de succès de l'appel OpenAI côté serveur).
+        result = getDemoReport();
+      }
+    }
+
+    stopProgressAnimation();
+    stopLoadingMessages();
+    loadingWrap.classList.remove('active');
+    mainGrid.style.opacity = '1';
+    roastBtn.disabled = false;
+
+    if (noCreditsLeft) {
+      // Aucune analyse générée (pas de crédit) : pas de carte "analyse prête"
+      // trompeuse, on ouvre directement le rapport verrouillé + paywall pour
+      // que l'utilisateur puisse acheter un pack.
+      lastReportPrepaid = false;
+      displayReport(getDemoReport(), true, 'no_credits');
+      await revealReport();
+      return;
+    }
+
+    if (!errorMessage) {
+      await new Promise(r => setTimeout(r, 300));
+    }
+
+    // Le crédit ayant déjà été débité côté serveur en cas de succès, le rapport
+    // se déverrouillera directement au clic sur "Voir mon analyse" (cf. revealReport).
+    lastReportPrepaid = !errorMessage;
+    displayReport(result, !!errorMessage, 'api_error');
+
+    // Sauvegarder dans Supabase
+    saveAnalysisToSupabase(result);
+  }
+
+  // Enregistre l'analyse dans Supabase (table `analyses`), liée à l'utilisateur connecté.
+  // Ne fait rien si l'utilisateur n'a pas de session Supabase active (ex: mode démo,
+  // ou compte email/mot de passe simulé qui n'est pas un vrai utilisateur Supabase).
+  async function saveAnalysisToSupabase(result){
+    if (!supabaseClient) return;
+    try {
+      const { data: userData, error: userError } = await supabaseClient.auth.getUser();
+      if (userError || !userData || !userData.user) {
+        return; // pas de session Supabase réelle, on ne sauvegarde rien
+      }
+      const { error: insertError } = await supabaseClient.from('analyses').insert({
+        user_id: userData.user.id,
+        vibe_score: result.vibe_score,
+        score_bio: result.score_bio,
+        score_photos: result.score_photos,
+        verdict: result.verdict,
+        punchline: result.punchline,
+        roast: result.roast || [],
+        toast: result.toast || []
+      });
+      if (insertError) {
+        console.error('Erreur sauvegarde analyse Supabase :', insertError);
+      }
+    } catch (e) {
+      console.error('saveAnalysisToSupabase error:', e);
+    }
+  }
+
+  let lastReportResult = null;
+  let lastReportIsDemo = false;
+  // true si le crédit de CE rapport a déjà été débité au moment de la génération
+  // (nouveau flow sécurisé) — dans ce cas, revealReport() n'a plus besoin de
+  // retenter un débit, il déverrouille directement.
+  let lastReportPrepaid = false;
+
+  // ---------- Count-up animé pour les scores (déclenché au déblocage réel) ----------
+  function easeOutCubicScore(t){ return 1 - Math.pow(1 - t, 3); }
+  function countUpScore(el, target, duration){
+    if (!el) return;
+    const num = parseFloat(target);
+    if (isNaN(num)) { el.textContent = target; return; }
+    const start = performance.now();
+    function frame(now){
+      const p = Math.min(1, (now - start) / duration);
+      el.textContent = (num * easeOutCubicScore(p)).toFixed(1);
+      if (p < 1) requestAnimationFrame(frame);
+      else el.textContent = num.toFixed(1);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function displayReport(result, isDemo, demoReason){
+    lastReportResult = result;
+    lastReportIsDemo = !!isDemo;
+    demoBanner.classList.toggle('show', !!isDemo);
+    if (isDemo) {
+      demoBanner.textContent = demoReason === 'no_credits'
+        ? "🔒 Aperçu — débloque un pack de crédits ci-dessous pour lancer une vraie analyse."
+        : "⚠️ Analyse de démonstration — le service d'analyse est temporairement indisponible, réessaie dans un instant.";
+    }
+
+    document.getElementById('storyScoreNum').textContent = result.vibe_score;
+    document.getElementById('storyVerdict').textContent = result.verdict;
+    document.getElementById('storyPunch').textContent = result.punchline;
+
+    document.getElementById('scoreBio').textContent = result.score_bio;
+    document.getElementById('scorePhotos').textContent = result.score_photos;
+    document.getElementById('scoreVibe').textContent = result.vibe_score;
+
+    pendingBarWidths = {
+      bio: (result.score_bio * 10) + '%',
+      photos: (result.score_photos * 10) + '%',
+      vibe: (result.vibe_score * 10) + '%'
+    };
+
+    const roastList = document.getElementById('roastList');
+    roastList.innerHTML = '';
+    (result.roast || []).forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      roastList.appendChild(li);
+    });
+
+    const toastList = document.getElementById('toastList');
+    toastList.innerHTML = '';
+    (result.toast || []).forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      toastList.appendChild(li);
+    });
+
+    // Le résultat est prêt mais reste caché derrière le paywall : on affiche d'abord
+    // une carte "analyse prête" avec un CTA, la révélation (floutée) se fait au clic.
+    if (reportBodyWrap) reportBodyWrap.classList.add('locked');
+    if (analysisReadyWrap) {
+      analysisReadyWrap.classList.add('active');
+      setTimeout(() => {
+        analysisReadyWrap.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    }
+  }
+
+  // Révèle la section rapport (flouté + paywall) suite au clic sur "Voir mon analyse".
+  // Si l'utilisateur a déjà des crédits (achat précédent), débloque automatiquement.
+  async function revealReport(){
+    if (analysisReadyWrap) analysisReadyWrap.classList.remove('active');
+    reportSection.classList.add('active');
+    document.body.classList.add('report-modal-open');
+    reportSection.scrollTop = 0;
+    if (pendingBarWidths) {
+      setTimeout(() => {
+        document.getElementById('barBio').style.width = pendingBarWidths.bio;
+        document.getElementById('barPhotos').style.width = pendingBarWidths.photos;
+        document.getElementById('barVibe').style.width = pendingBarWidths.vibe;
+      }, 350);
+    }
+    if (lastReportPrepaid) {
+      // Le crédit a déjà été débité côté serveur au moment de la génération —
+      // rien à revérifier, on déverrouille directement.
+      unlockReportNow();
+    }
+    refreshPremiumButtonState();
+  }
+
+  function closeReportModal(){
+    reportSection.classList.remove('active');
+    document.body.classList.remove('report-modal-open');
+  }
+
+  // ---------- Système de crédits (Stripe) ----------
+  const PENDING_REPORT_KEY = 'vibecheck_pending_report';
+
+  function savePendingReportForCheckout(){
+    if (!lastReportResult) return;
+    const basePayload = { result: lastReportResult, isDemo: lastReportIsDemo };
+    const fullPayload = { ...basePayload };
+    if (uploadedImageBase64) {
+      fullPayload.imageBase64 = uploadedImageBase64;
+      fullPayload.mediaType = uploadedMediaType;
+    }
+    try {
+      localStorage.setItem(PENDING_REPORT_KEY, JSON.stringify(fullPayload));
+    } catch(e) {
+      // Image trop grosse pour le quota localStorage restant : on retente sans elle
+      // plutôt que de perdre la sauvegarde du rapport entier.
+      console.warn('Sauvegarde avec image échouée (quota probable), fallback sans image:', e);
+      try {
+        localStorage.setItem(PENDING_REPORT_KEY, JSON.stringify(basePayload));
+      } catch(e2) {
+        console.error('Impossible de sauvegarder le rapport en attente:', e2);
+      }
+    }
+  }
+
+  async function getSupabaseAccessToken(){
+    if (!supabaseClient) return null;
+    const { data } = await supabaseClient.auth.getSession();
+    return data && data.session ? data.session.access_token : null;
+  }
+
+  // Déverrouille visuellement le rapport (flash + count-up). Le crédit a déjà été
+  // débité côté serveur au moment de la génération — il n'y a plus d'appel réseau
+  // à faire ici, contrairement à l'ancien flow où le paiement se faisait à ce stade.
+  function unlockReportNow(){
+    if (!reportBodyWrap) return;
+    reportBodyWrap.classList.remove('locked');
+    reportBodyWrap.classList.add('unlock-flash');
+    setTimeout(() => reportBodyWrap.classList.remove('unlock-flash'), 700);
+    if (lastReportResult) {
+      countUpScore(document.getElementById('storyScoreNum'), lastReportResult.vibe_score, 1000);
+      countUpScore(document.getElementById('scoreBio'), lastReportResult.score_bio, 900);
+      countUpScore(document.getElementById('scorePhotos'), lastReportResult.score_photos, 900);
+      countUpScore(document.getElementById('scoreVibe'), lastReportResult.vibe_score, 900);
+    }
+  }
+
+  function setPaywallButtonsDisabled(disabled){
+    document.querySelectorAll('.paywall-tier').forEach(btn => { btn.disabled = disabled; });
+  }
+
+  async function initiateCheckout(pack){
+    try {
+      // Vérifier d'abord si l'utilisateur est connecté
+      const session = getSession();
+      if (!session) { 
+        console.warn('Pas de session — redirection vers signup');
+        navigateTo('signup'); 
+        return; 
+      }
+      
+      console.log('Session détectée, préparation du checkout...');
+      savePendingReportForCheckout();
+      setPaywallButtonsDisabled(true);
+      if (paywallLoading) paywallLoading.classList.add('active');
+      
+      // Essayer d'obtenir le token
+      let token = null;
+      if (supabaseClient) {
+        try {
+          token = await getSupabaseAccessToken();
+          console.log('Token Supabase obtenu:', token ? 'OK' : 'NULL');
+        } catch(e) {
+          console.error('Erreur getSupabaseAccessToken:', e);
+        }
+      } else {
+        console.warn('supabaseClient non initialisé');
+      }
+      
+      if (!token) {
+        throw new Error('Impossible de récupérer votre session. Reconnecte-toi.');
+      }
+      
+      // Appel API
+      const resp = await fetch('/api/create-checkout-session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ pack })
+      });
+      
+      console.log('Réponse API:', resp.status);
+      
+      if (!resp.ok) {
+        let errorMsg = `Erreur ${resp.status}`;
+        try {
+          const errData = await resp.json();
+          errorMsg = errData.error || errorMsg;
+        } catch(e) { }
+        throw new Error(errorMsg);
+      }
+      
+      const data = await resp.json();
+      if (data && data.url) {
+        console.log('Redirection vers Stripe...');
+        window.location.href = data.url;
+      } else {
+        throw new Error('URL de paiement non reçue du serveur');
+      }
+    } catch(e) {
+      console.error('Erreur initiateCheckout:', e);
+      setPaywallButtonsDisabled(false);
+      if (paywallLoading) paywallLoading.classList.remove('active');
+      alert('Erreur paiement : ' + (e.message || 'essaie de te reconnecter'));
+    }
+  }
+
+  // Checkout pour le pack Premium (réécriture bio + ordre des photos) — achat unique, pas un crédit.
+  async function initiatePremiumCheckout(){
+    const btn = document.getElementById('premiumUnlockBtn');
+    try {
+      const session = getSession();
+      if (!session) {
+        navigateTo('signup');
+        return;
+      }
+      if (btn) { btn.disabled = true; btn.textContent = 'Chargement...'; }
+
+      // Sauvegarde le rapport (+ l'image si possible) pour pouvoir générer les
+      // suggestions Premium directement au retour, sans redemander l'upload.
+      savePendingReportForCheckout();
+
+      const token = await getSupabaseAccessToken();
+      if (!token) {
+        throw new Error('Impossible de récupérer votre session. Reconnecte-toi.');
+      }
+
+      const resp = await fetch('/api/create-premium-checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      });
+
+      if (!resp.ok) {
+        let errorMsg = `Erreur ${resp.status}`;
+        try { const errData = await resp.json(); errorMsg = errData.error || errorMsg; } catch(e) {}
+        throw new Error(errorMsg);
+      }
+
+      const data = await resp.json();
+      if (data && data.url) {
+        window.location.href = data.url;
+      } else {
+        throw new Error('URL de paiement non reçue du serveur');
+      }
+    } catch(e) {
+      console.error('Erreur initiatePremiumCheckout:', e);
+      alert('Erreur paiement : ' + (e.message || 'essaie de te reconnecter'));
+    } finally {
+      if (btn) { btn.disabled = false; btn.textContent = 'Accéder maintenant →'; }
+    }
+  }
+
+  // Échappe le texte injecté en innerHTML (le contenu vient de l'API mais mieux vaut
+  // ne jamais faire confiance à du texte inséré tel quel dans le DOM).
+  function escapeHtml(str){
+    return String(str == null ? '' : str).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  }
+
+  // ---------- Les 4 états possibles de la carte Premium dans le rapport ----------
+
+  function renderPremiumLocked(){
+    const card = document.getElementById('premiumUpsellCard');
+    if (!card) return;
+    card.innerHTML = `
+      <div class="premium-state">
+        <div style="font-weight:800; font-size:14.5px; margin-bottom:8px; color:var(--yellow);">💡 Débloque plus avec Premium</div>
+        <div style="font-size:13.5px; color:var(--text-dim); margin-bottom:14px;">Réécriture de bio + ordre optimal des photos, pour 2,99€.</div>
+        <button type="button" id="premiumUnlockBtn" style="font-size:13.5px; font-weight:700; color:var(--yellow); background:none; border:none; cursor:pointer; padding:0;">Accéder maintenant →</button>
+      </div>
+    `;
+    const btn = document.getElementById('premiumUnlockBtn');
+    if (btn) btn.addEventListener('click', initiatePremiumCheckout);
+  }
+
+  function renderPremiumUnlockedIdle(){
+    const card = document.getElementById('premiumUpsellCard');
+    if (!card) return;
+    card.innerHTML = `
+      <div class="premium-state">
+        <div style="font-weight:800; font-size:14.5px; margin-bottom:8px; color:var(--yellow);">✓ Premium débloqué</div>
+        <div style="font-size:13.5px; color:var(--text-dim); margin-bottom:14px;">Génère la réécriture de ta bio et l'ordre optimal de tes photos, basé sur cette analyse.</div>
+        <button type="button" id="premiumGenerateBtn" class="premium-generate-btn">Générer mes suggestions ✨</button>
+      </div>
+    `;
+    const btn = document.getElementById('premiumGenerateBtn');
+    if (btn) btn.addEventListener('click', generatePremiumContent);
+  }
+
+  function renderPremiumLoading(){
+    const card = document.getElementById('premiumUpsellCard');
+    if (!card) return;
+    card.innerHTML = `
+      <div class="premium-state">
+        <div class="premium-loading-tag"><span class="premium-spin"></span> Génération en cours...</div>
+        <div class="premium-skel-card"><div class="premium-skel-row skeleton"></div><div class="premium-skel-row skeleton"></div><div class="premium-skel-row skeleton"></div></div>
+        <div class="premium-skel-card"><div class="premium-skel-row skeleton"></div><div class="premium-skel-row skeleton"></div><div class="premium-skel-row skeleton"></div></div>
+        <div class="premium-skel-card"><div class="premium-skel-row skeleton"></div><div class="premium-skel-row skeleton"></div><div class="premium-skel-row skeleton"></div></div>
+      </div>
+    `;
+  }
+
+  function renderPremiumError(msg){
+    const card = document.getElementById('premiumUpsellCard');
+    if (!card) return;
+    card.innerHTML = `
+      <div class="premium-state">
+        <div style="font-weight:800; font-size:14.5px; margin-bottom:8px; color:var(--coral);">⚠️ Oups</div>
+        <div style="font-size:13.5px; color:var(--text-dim); margin-bottom:14px;">${escapeHtml(msg)}</div>
+        <button type="button" id="premiumRetryBtn" style="font-size:13.5px; font-weight:700; color:var(--yellow); background:none; border:none; cursor:pointer; padding:0;">Réessayer →</button>
+      </div>
+    `;
+    const btn = document.getElementById('premiumRetryBtn');
+    if (btn) btn.addEventListener('click', generatePremiumContent);
+  }
+
+  function renderPremiumResults(data){
+    const card = document.getElementById('premiumUpsellCard');
+    if (!card) return;
+
+    let i = 0; // index global pour l'échelonnement de l'entrée (bio + photos à la suite)
+
+    const bioHtml = (data.bio_rewrites || []).map((b) => `
+      <div class="premium-bio-card stagger-item" style="--i:${i++};">
+        <div class="premium-bio-style">${escapeHtml(b.style || '')}</div>
+        <div class="premium-bio-text">${escapeHtml(b.text || '')}</div>
+        <button type="button" class="premium-copy-btn" data-copy-text="${escapeHtml(b.text || '')}"><span class="check-pop">📋</span> <span class="copy-label">Copier</span></button>
+      </div>
+    `).join('');
+
+    let photoHtml = '';
+    const po = data.photo_order || {};
+    if (po.multiple_photos_detected && po.ranking && po.ranking.length) {
+      photoHtml = `
+        <div class="premium-section-label">Ordre optimal des photos</div>
+        ${po.ranking.map(r => `
+          <div class="premium-photo-rank stagger-item" style="--i:${i++};">
+            <div class="premium-photo-rank-num">${escapeHtml(String(r.position || ''))}</div>
+            <div class="premium-photo-rank-text"><strong>${escapeHtml(r.description || '')}</strong> — ${escapeHtml(r.reason || '')}</div>
+          </div>
+        `).join('')}
+      `;
+    } else if (po.general_tips && po.general_tips.length) {
+      photoHtml = `
+        <div class="premium-section-label">Conseils photos</div>
+        <div style="font-size:12.5px; color:var(--text-dim); margin-bottom:10px;">Une seule photo est visible sur cette capture — voici quelques conseils généraux :</div>
+        <ul style="padding-left:18px; margin:0;">
+          ${po.general_tips.map(t => `<li style="font-size:13px; color:var(--text-dim); margin-bottom:6px;">${escapeHtml(t)}</li>`).join('')}
+        </ul>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="premium-state">
+        <div style="font-weight:800; font-size:14.5px; margin-bottom:12px; color:var(--yellow);">✨ Tes suggestions Premium</div>
+        <div class="premium-section-label">Réécriture de bio</div>
+        ${bioHtml}
+        ${photoHtml}
+      </div>
+    `;
+
+    card.querySelectorAll('.premium-copy-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (btn.classList.contains('copied')) return;
+        const text = btn.getAttribute('data-copy-text') || '';
+        navigator.clipboard.writeText(text).then(() => {
+          const label = btn.querySelector('.copy-label');
+          const check = btn.querySelector('.check-pop');
+          btn.classList.add('copied');
+          if (check) check.textContent = '✓';
+          if (label) label.textContent = 'Copié';
+          setTimeout(() => {
+            btn.classList.remove('copied');
+            if (check) check.textContent = '📋';
+            if (label) label.textContent = 'Copier';
+          }, 1500);
+        }).catch(() => {});
+      });
+    });
+  }
+
+  // Appelle /api/generate-premium-content avec l'image de l'analyse en cours.
+  async function generatePremiumContent(){
+    renderPremiumLoading();
+    try {
+      if (!uploadedImageBase64) {
+        throw new Error("L'image originale n'est plus disponible dans cette session — refais une analyse pour générer tes suggestions Premium.");
+      }
+      const token = await getSupabaseAccessToken();
+      if (!token) throw new Error('Session expirée, reconnecte-toi.');
+
+      const resp = await fetch('/api/generate-premium-content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ imageBase64: uploadedImageBase64, mediaType: uploadedMediaType }),
+      });
+
+      if (!resp.ok) {
+        let msg = `Erreur ${resp.status}`;
+        try { const errData = await resp.json(); msg = errData.error || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+
+      const data = await resp.json();
+      renderPremiumResults(data);
+    } catch(e) {
+      console.error('Erreur generatePremiumContent:', e);
+      renderPremiumError(e.message || 'Erreur inconnue');
+    }
+  }
+
+  // État initial de la carte au chargement de la page.
+  renderPremiumLocked();
+
+  // Gère le retour depuis Stripe Checkout (succès ou annulation) : restaure le rapport
+  // généré avant le paiement et tente le déblocage si le paiement a réussi.
+  async function handleCheckoutReturn(){
+    const params = new URLSearchParams(window.location.search);
+    const checkoutStatus = params.get('checkout');
+    const premiumStatus = params.get('premium');
+
+    if (premiumStatus) {
+      const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+      window.history.replaceState({}, '', cleanUrl);
+
+      if (premiumStatus === 'success') {
+        // Restaure le rapport (+ l'image si elle a pu être sauvegardée) pour permettre
+        // de générer les suggestions Premium directement, sans re-upload.
+        const pendingRaw = localStorage.getItem(PENDING_REPORT_KEY);
+        if (pendingRaw) {
+          try {
+            const pending = JSON.parse(pendingRaw);
+            if (pending && pending.result) {
+              displayReport(pending.result, pending.isDemo);
+              if (pending.imageBase64) {
+                uploadedImageBase64 = pending.imageBase64;
+                uploadedMediaType = pending.mediaType;
+              }
+              await revealReport();
+            }
+          } catch(e) { console.error('Erreur restauration pending report (premium):', e); }
+          localStorage.removeItem(PENDING_REPORT_KEY);
+        }
+        showShareToast('✓ Premium débloqué — merci !');
+        await refreshPremiumButtonState();
+      }
+      return;
+    }
+
+    if (!checkoutStatus) return;
+
+    const cleanUrl = window.location.origin + window.location.pathname + window.location.hash;
+    window.history.replaceState({}, '', cleanUrl);
+
+    const pendingRaw = localStorage.getItem(PENDING_REPORT_KEY);
+    if (!pendingRaw) return;
+    let pending;
+    try { pending = JSON.parse(pendingRaw); } catch(e) { return; }
+    localStorage.removeItem(PENDING_REPORT_KEY);
+    if (!pending) return;
+
+    if (pending.imageBase64) {
+      uploadedImageBase64 = pending.imageBase64;
+      uploadedMediaType = pending.mediaType;
+    }
+
+    if (checkoutStatus === 'success' && pending.imageBase64) {
+      // Le crédit vient d'être ajouté par le webhook Stripe (peut prendre 1-2s à
+      // arriver) : on relance la VRAIE analyse avec l'image restaurée, plutôt que
+      // de simplement "débloquer" l'aperçu démo affiché avant l'achat.
+      const token = await getSupabaseAccessToken();
+      let analyzed = false;
+      if (token) {
+        for (let i = 0; i <= 5 && !analyzed; i++) {
+          try {
+            const resp = await fetch('/api/analyze-profile', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+              body: JSON.stringify({ imageBase64: pending.imageBase64, mediaType: pending.mediaType }),
+            });
+            if (resp.ok) {
+              const result = await resp.json();
+              lastReportPrepaid = true;
+              displayReport(result, false);
+              await revealReport();
+              saveAnalysisToSupabase(result);
+              analyzed = true;
+              break;
+            }
+          } catch(e) { console.error('Erreur relance analyse post-achat:', e); }
+          if (!analyzed && i < 5) await new Promise(r => setTimeout(r, 1200));
+        }
+      }
+      if (!analyzed) {
+        // Filet de sécurité si ça échoue encore malgré les tentatives (panne
+        // réseau, webhook anormalement lent...) : on affiche quand même l'aperçu
+        // précédent plutôt que de laisser l'utilisateur sans aucun retour.
+        lastReportPrepaid = false;
+        displayReport(pending.result, true, 'api_error');
+        await revealReport();
+      }
+      return;
+    }
+
+    // Cas restant (peu probable ici) : un rapport réel était déjà en attente.
+    if (pending.result) {
+      lastReportPrepaid = false;
+      displayReport(pending.result, pending.isDemo);
+      await revealReport();
+    }
+  }
+
+  // Vérifie le statut premium de l'utilisateur et met à jour l'affichage de la carte en conséquence.
+  async function refreshPremiumButtonState(){
+    const card = document.getElementById('premiumUpsellCard');
+    if (!card) return;
+    try {
+      const token = await getSupabaseAccessToken();
+      if (!token) return;
+      const resp = await fetch('/api/get-credits', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!resp.ok) return;
+      const data = await resp.json();
+      if (data && data.premiumUnlocked) {
+        renderPremiumUnlockedIdle();
+      }
+    } catch(e) {
+      console.error('Erreur refreshPremiumButtonState:', e);
+    }
+  }
+
+  function showShareToast(msg){
+    shareToast.textContent = msg;
+    shareToast.classList.add('show');
+    setTimeout(() => shareToast.classList.remove('show'), 3500);
+  }
+
+  async function shareStory(){
+    if (!lastReportResult) {
+      alert("Aucune analyse à exporter pour l'instant.");
+      return;
+    }
+
+    const originalHTML = shareBtn.innerHTML;
+    shareBtn.disabled = true;
+    shareBtn.innerHTML = '⏳ Génération...';
+
+    try {
+      const params = new URLSearchParams({
+        score: String(lastReportResult.vibe_score),
+        verdict: lastReportResult.verdict || '',
+        punchline: lastReportResult.punchline || '',
+      });
+
+      const imgResp = await fetch(`/api/generate-story-image?${params.toString()}`);
+      if (!imgResp.ok) {
+        let msg = `Erreur ${imgResp.status}`;
+        try { const errData = await imgResp.json(); msg = errData.error || msg; } catch(e) {}
+        throw new Error(msg);
+      }
+
+      const blob = await imgResp.blob();
+      if (!blob) throw new Error("La génération de l'image a échoué");
+
+      const fileName = `vibecheck-score-${Date.now()}.png`;
+      let handled = false;
+
+      if (navigator.canShare) {
+        try {
+          const file = new File([blob], fileName, { type: 'image/png' });
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Mon VibeCheck Score',
+              text: 'Check mon vibe score sur VibeCheck 🔥'
+            });
+            handled = true;
+            showShareToast('✓ Partage ouvert');
+          }
+        } catch (shareErr) {
+          if (shareErr.name === 'AbortError') {
+            handled = true;
+          }
+        }
+      }
+
+      if (!handled) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = fileName;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        showShareToast('✓ Image téléchargée dans tes fichiers/photos');
+      }
+
+    } catch (err) {
+      console.error('Export error:', err);
+      alert("Erreur lors de la génération de l'image : " + err.message);
+    } finally {
+      shareBtn.disabled = false;
+      shareBtn.innerHTML = originalHTML;
+    }
+  }
+
+  if (viewAnalysisBtn) viewAnalysisBtn.addEventListener('click', revealReport);
+  const closeReportModalBtn = document.getElementById('closeReportModal');
+  if (closeReportModalBtn) closeReportModalBtn.addEventListener('click', closeReportModal);
+
+  document.querySelectorAll('.paywall-tier').forEach(btn => {
+    btn.addEventListener('click', () => initiateCheckout(btn.dataset.pack));
+  });
+
+  shareBtn.addEventListener('click', shareStory);
+
+  retryBtn.addEventListener('click', () => {
+    reportSection.classList.remove('active');
+    document.body.classList.remove('report-modal-open');
+    if (analysisReadyWrap) analysisReadyWrap.classList.remove('active');
+    if (reportBodyWrap) reportBodyWrap.classList.add('locked');
+    dropContent.innerHTML = `<div class="drop-icon">📸</div><div class="drop-title">Dépose ta capture d'écran ici</div><div class="drop-sub">ou clique pour parcourir — PNG, JPG jusqu'à 8 Mo</div>`;
+    roastBtn.disabled = true;
+    uploadedImageBase64 = null;
+    fileInput.value = '';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  function handleRoastClick(){
+    if (!uploadedImageBase64) {
+      alert('Sélectionne d\'abord une image avant de lancer l\'analyse.');
+      return;
+    }
+    if (!getSession()) {
+      savePendingAnalysis();
+      navigateTo('signup');
+      return;
+    }
+    runAnalysis();
+  }
+  roastBtn.addEventListener('click', handleRoastClick);
+
+  // Accordéon FAQ
+  function initFaqAccordion(){
+    document.querySelectorAll('.faq-item').forEach(item => {
+      const question = item.querySelector('.faq-question');
+      const answer = item.querySelector('.faq-answer');
+      question.addEventListener('click', () => {
+        const isOpen = item.classList.contains('open');
+        if (isOpen) {
+          answer.style.maxHeight = null;
+          item.classList.remove('open');
+        } else {
+          item.classList.add('open');
+          answer.style.maxHeight = answer.scrollHeight + 'px';
+        }
+      });
+    });
+  }
+
+  // ---------- Motion : scroll-reveal échelonné + nav qui se renforce au scroll ----------
+  function initScrollReveal(){
+    const groups = [
+      document.querySelectorAll('.review-card'),
+      document.querySelectorAll('.faq-item'),
+      document.querySelectorAll('.price-card'),
+    ];
+    groups.forEach(group => {
+      group.forEach((el, i) => {
+        el.classList.add('reveal-on-scroll');
+        el.style.transitionDelay = Math.min(i * 70, 280) + 'ms';
+      });
+    });
+    const allTargets = document.querySelectorAll('.reveal-on-scroll');
+    if (!('IntersectionObserver' in window) || allTargets.length === 0) {
+      allTargets.forEach(el => el.classList.add('revealed'));
+      return;
+    }
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add('revealed');
+          observer.unobserve(entry.target);
+        }
+      });
+    }, { threshold: 0.15, rootMargin: '0px 0px -40px 0px' });
+    allTargets.forEach(el => observer.observe(el));
+  }
+
+  function initNavScrollState(){
+    const navEl = document.querySelector('nav');
+    if (!navEl) return;
+    const onScroll = () => {
+      navEl.classList.toggle('nav-scrolled', window.scrollY > 8);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+  }
+
+  setupDropZone();
+  refreshAuthUI();
+  initGoogleButtons();
+  syncSupabaseSession();
+  handleCheckoutReturn();
+  initPreviewWall();
+  initFaqAccordion();
+  initScrollReveal();
+  initNavScrollState();
+  cycleActivityToast();
+  setInterval(cycleActivityToast, 6000);
+  showAuthView(location.hash.replace('#', '') === 'signup' || location.hash.replace('#', '') === 'login' ? location.hash.replace('#', '') : '');
+})();
+</script>
+
+</body>
+</html>
